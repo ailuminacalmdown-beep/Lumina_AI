@@ -1,0 +1,592 @@
+at > ~/assistant_pwa/index.html << 'EOF'
+<!
+        .audio-player select, .audio-player button {
+            background: #2a2a4a;
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+        }
+        .status {
+            font-size: 0.7rem;
+            color: #aaa;
+            text-align: center;
+            padding: 4px;
+        }
+        input[type="file"] { display: none; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+</head>
+<link rel="manifest" href="manifest.json">
+<body>
+<div class="header">
+    <span>🧃🌎</span> Lumina
+</div>
+<div class="chat-area" id="chatArea"></div>
+<div class="toolbar">
+    <label for="imageInput" style="background:#2a2a4a; padding:6px 12px; border-radius:20px;">📷 Envoyer image</label>
+    <input type="file" id="imageInput" accept="image/*">
+    <button id="voiceBtn">🎤 Parler</button>
+    <button id="speakLastBtn">🔊 Lire réponse</button>
+    <div class="audio-player">
+        <select id="songSelect">
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">Musique relax 1</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3">Musique dance 1</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3">Musique douce 1</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3">Musique relax 2</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3">Musique dance 2</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3">Musique entraînante</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3">Musique électro</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3">Musique acoustique</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3">Musique lofi</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3">Musique classique</option>
+        </select>
+        <button id="playBtn">▶ Jouer</button>
+        <button id="stopBtn">⏹ Stop tout</button>
+    </div>
+</div>
+<div class="input-area">
+    <input type="text" id="userInput" placeholder="Message ou 'joue [titre]' ou 'cherche musique [titre]'">
+    <button id="sendBtn">➤</button>
+</div>
+<div class="status" id="status">Prêt</div>
+
+<script>
+    // ----- Configuration -----
+    const API_URL = "/chat";
+    let lastReply = "";
+    let currentAudio = null;
+    let mobilenetModel = null;
+    // 🔑 Remplace "127d581d" par ta vrai clé (client_id)
+    let jamendoKey = "127d581d";
+
+    // Éléments DOM
+    const chatArea = document.getElementById("chatArea");
+    const userInput = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const statusDiv = document.getElementById("status");
+    const imageInput = document.getElementById("imageInput");
+    const voiceBtn = document.getElementById("voiceBtn");
+    const speakLastBtn = document.getElementById("speakLastBtn");
+    const songSelect = document.getElementById("songSelect");
+    const playBtn = document.getElementById("playBtn");
+    const stopBtn = document.getElementById("stopBtn");
+
+    // ---------- Synthèse vocale ----------
+    function speak(text) {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "fr-FR";
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    // ---------- Lecture audio ----------
+    function playMusic(url) {
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
+        currentAudio = new Audio(url);
+        currentAudio.play().catch(e => console.log(e));
+    }
+
+    function stopAllSounds() {
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
+        statusDiv.textContent = "Prêt";
+    }
+
+    playBtn.onclick = () => playMusic(songSelect.value);
+    stopBtn.onclick = stopAllSounds;
+
+    // ---------- Recherche musicale via Jamendo (clé intégrée) ----------
+    async function searchAndPlayMusic(query) {
+        if (!jamendoKey) {
+            addMessage("assistant", "🔑 Clé Jamendo manquante. Contactez le développeur.");
+            return false;
+        }
+        statusDiv.textContent = "🎵 Recherche en cours...";
+        try {
+            const url = `https://api.jamendo.com/v3.0/tracks/?client_id=${jamendoKey}&format=json&limit=1&search=${encodeURIComponent(query)}&include=musicinfo&audiodownload=1`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.results && data.results.length > 0) {
+                const track = data.results[0];
+                const audioUrl = track.audio;
+                if (audioUrl) {
+                    playMusic(audioUrl);
+                    addMessage("assistant", `🎵 Je joue "${track.name}" par ${track.artist_name}.`);
+                    return true;
+                } else {
+                    addMessage("assistant", `Aucun lien audio trouvé pour "${query}".`);
+                    return false;
+                }
+            } else {
+                addMessage("assistant", `Aucun résultat pour "${query}".`);
+                return false;
+            }
+        } catch (e) {
+            addMessage("assistant", `Erreur recherche: ${e.message}`);
+            return false;
+        } finally {
+            statusDiv.textContent = "Prêt";
+        }
+    }
+
+    // ---------- Reconnaissance vocale ----------
+    let recognition = null;
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = 'fr-FR';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+    }
+    voiceBtn.onclick = () => {
+        if (!recognition) {
+            addMessage("assistant", "Reconnaissance vocale non supportée.");
+            return;
+        }
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        statusDiv.textContent = "🎙️ Écoute...";
+        recognition.start();
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            userInput.value = transcript;
+            statusDiv.textContent = "Prêt";
+            sendMessage();
+        };
+        recognition.onerror = () => statusDiv.textContent = "Erreur micro";
+        recognition.onend = () => { if (statusDiv.textContent === "🎙️ Écoute...") statusDiv.textContent = "Prêt"; };
+    };
+
+    // ---------- Affichage message ----------
+    function addMessage(role, content, isImage = false, imageUrl = null) {
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `message ${role}`;
+        if (isImage && imageUrl) {
+            msgDiv.innerHTML = `<b>${role === "user" ? "Vous" : "Assistant"}</b> a partagé :<br>
+                                <img src="${imageUrl}" class="image-preview">`;
+        } else {
+            msgDiv.textContent = content;
+        }
+        chatArea.appendChild(msgDiv);
+        chatArea.scrollTop = chatArea.scrollHeight;
+        if (role === "assistant") lastReply = content;
+    }
+
+    // ---------- Appel API backend (Flask) ----------
+    async function sendToLumina(message) {
+        statusDiv.textContent = "🧃🌎 réflexion...";
+        const enhancedMessage = `[Contexte: Tu es l'assistant Lumina. Tu peux jouer de la musique (commande "joue ..."), voir et décrire des images (tu reçois la description visuelle), parler via synthèse vocale, et répondre aux questions. Voici la demande de l'utilisateur:] ${message}`;
+        try {
+            const res = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: enhancedMessage })
+            });
+            const data = await res.json();
+            if (data.reply) return data.reply;
+            else return "Erreur : réponse vide.";
+        } catch (e) {
+            return `Erreur réseau : ${e.message}`;
+        } finally {
+            statusDiv.textContent = "Prêt";
+        }
+    }
+
+    // ---------- Vision (MobileNet) ----------
+    async function loadModel() {
+        statusDiv.textContent = "📦 Chargement vision...";
+        mobilenetModel = await mobilenet.load();
+        statusDiv.textContent = "Prêt";
+    }
+    loadModel();
+
+    async function describeImage(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const img = new Image();
+                img.onload = async () => {
+                    const predictions = await mobilenetModel.classify(img);
+                    if (predictions && predictions.length) {
+                        const descriptions = predictions.slice(0, 3).map(p => `${p.className} (${Math.round(p.probability*100)}%)`).join(", ");
+                        resolve(`Je vois : ${descriptions}.`);
+                    } else {
+                        resolve("Je ne reconnais pas cette image.");
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    imageInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            addMessage("user", "", true, ev.target.result);
+        };
+        reader.readAsDataURL(file);
+        const description = await describeImage(file);
+        const reply = await sendToLumina(description);
+        addMessage("assistant", reply);
+        speak(reply);
+        imageInput.value = "";
+    });
+
+    // ---------- Gestion des messages utilisateur ----------
+    async function sendMessage() {
+        let msg = userInput.value.trim();
+        if (!msg) return;
+        userInput.value = "";
+        addMessage("user", msg);
+
+        const lowerMsg = msg.toLowerCase();
+        if (lowerMsg.startsWith("joue ")) {
+            const query = msg.slice(5).trim();
+            if (query.startsWith("http")) {
+                playMusic(query);
+                addMessage("assistant", `🎵 Je joue depuis l'URL fournie.`);
+                return;
+            } else {
+                const success = await searchAndPlayMusic(query);
+                if (!success) {
+                    playMusic(songSelect.value);
+                    addMessage("assistant", `🎵 Je joue ${songSelect.options[songSelect.selectedIndex].text} par défaut.`);
+                }
+                return;
+            }
+        } else if (lowerMsg.startsWith("cherche musique ")) {
+            const query = msg.slice(16).trim();
+            await searchAndPlayMusic(query);
+            return;
+        }
+
+        const reply = await sendToLumina(msg);
+        addMessage("assistant", reply);
+        speak(reply);
+    }
+
+    speakLastBtn.onclick = () => {
+        if (lastReply) speak(lastReply);
+        else addMessage("assistant", "Aucune réponse à lire.");
+    };
+
+    sendBtn.onclick = sendMessage;
+    userInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
+
+    addMessage("assistant", "🧃🌎 Bonjour ! Je suis Lumina. Je peux voir tes images, jouer de la musique (dis 'joue [titre]'), parler, et bien plus encore. Que veux-tu ?");
+</script>
+</body>
+</html>
+
+        .audio-player select, .audio-player button {
+            background: #2a2a4a;
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+        }
+        .status {
+            font-size: 0.7rem;
+            color: #aaa;
+            text-align: center;
+            padding: 4px;
+        }
+        input[type="file"] { display: none; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+</head>
+<link rel="manifest" href="manifest.json">
+<body>
+<div class="header">
+    <span>🧃🌎</span> Lumina
+</div>
+<div class="chat-area" id="chatArea"></div>
+<div class="toolbar">
+    <label for="imageInput" style="background:#2a2a4a; padding:6px 12px; border-radius:20px;">📷 Envoyer image</label>
+    <input type="file" id="imageInput" accept="image/*">
+    <button id="voiceBtn">🎤 Parler</button>
+    <button id="speakLastBtn">🔊 Lire réponse</button>
+    <div class="audio-player">
+        <select id="songSelect">
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">Musique relax 1</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3">Musique dance 1</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3">Musique douce 1</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3">Musique relax 2</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3">Musique dance 2</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3">Musique entraînante</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3">Musique électro</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3">Musique acoustique</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3">Musique lofi</option>
+            <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3">Musique classique</option>
+        </select>
+        <button id="playBtn">▶ Jouer</button>
+        <button id="stopBtn">⏹ Stop tout</button>
+    </div>
+</div>
+<div class="input-area">
+    <input type="text" id="userInput" placeholder="Message ou 'joue [titre]' ou 'cherche musique [titre]'">
+    <button id="sendBtn">➤</button>
+</div>
+<div class="status" id="status">Prêt</div>
+
+<script>
+    // ----- Configuration -----
+    const API_URL = "/chat";
+    let lastReply = "";
+    let currentAudio = null;
+    let mobilenetModel = null;
+    // 🔑 Remplace "127d581d" par ta vrai clé (client_id)
+    let jamendoKey = "127d581d";
+
+    // Éléments DOM
+    const chatArea = document.getElementById("chatArea");
+    const userInput = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const statusDiv = document.getElementById("status");
+    const imageInput = document.getElementById("imageInput");
+    const voiceBtn = document.getElementById("voiceBtn");
+    const speakLastBtn = document.getElementById("speakLastBtn");
+    const songSelect = document.getElementById("songSelect");
+    const playBtn = document.getElementById("playBtn");
+    const stopBtn = document.getElementById("stopBtn");
+
+    // ---------- Synthèse vocale ----------
+    function speak(text) {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "fr-FR";
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    // ---------- Lecture audio ----------
+    function playMusic(url) {
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
+        currentAudio = new Audio(url);
+        currentAudio.play().catch(e => console.log(e));
+    }
+
+    function stopAllSounds() {
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
+        statusDiv.textContent = "Prêt";
+    }
+
+    playBtn.onclick = () => playMusic(songSelect.value);
+    stopBtn.onclick = stopAllSounds;
+
+    // ---------- Recherche musicale via Jamendo (clé intégrée) ----------
+    async function searchAndPlayMusic(query) {
+        if (!jamendoKey) {
+            addMessage("assistant", "🔑 Clé Jamendo manquante. Contactez le développeur.");
+            return false;
+        }
+        statusDiv.textContent = "🎵 Recherche en cours...";
+        try {
+            const url = `https://api.jamendo.com/v3.0/tracks/?client_id=${jamendoKey}&format=json&limit=1&search=${encodeURIComponent(query)}&include=musicinfo&audiodownload=1`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.results && data.results.length > 0) {
+                const track = data.results[0];
+                const audioUrl = track.audio;
+                if (audioUrl) {
+                    playMusic(audioUrl);
+                    addMessage("assistant", `🎵 Je joue "${track.name}" par ${track.artist_name}.`);
+                    return true;
+                } else {
+                    addMessage("assistant", `Aucun lien audio trouvé pour "${query}".`);
+                    return false;
+                }
+            } else {
+                addMessage("assistant", `Aucun résultat pour "${query}".`);
+                return false;
+            }
+        } catch (e) {
+            addMessage("assistant", `Erreur recherche: ${e.message}`);
+            return false;
+        } finally {
+            statusDiv.textContent = "Prêt";
+        }
+    }
+
+    // ---------- Reconnaissance vocale ----------
+    let recognition = null;
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = 'fr-FR';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+    }
+    voiceBtn.onclick = () => {
+        if (!recognition) {
+            addMessage("assistant", "Reconnaissance vocale non supportée.");
+            return;
+        }
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        statusDiv.textContent = "🎙️ Écoute...";
+        recognition.start();
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            userInput.value = transcript;
+            statusDiv.textContent = "Prêt";
+            sendMessage();
+        };
+        recognition.onerror = () => statusDiv.textContent = "Erreur micro";
+        recognition.onend = () => { if (statusDiv.textContent === "🎙️ Écoute...") statusDiv.textContent = "Prêt"; };
+    };
+
+    // ---------- Affichage message ----------
+    function addMessage(role, content, isImage = false, imageUrl = null) {
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `message ${role}`;
+        if (isImage && imageUrl) {
+            msgDiv.innerHTML = `<b>${role === "user" ? "Vous" : "Assistant"}</b> a partagé :<br>
+                                <img src="${imageUrl}" class="image-preview">`;
+        } else {
+            msgDiv.textContent = content;
+        }
+        chatArea.appendChild(msgDiv);
+        chatArea.scrollTop = chatArea.scrollHeight;
+        if (role === "assistant") lastReply = content;
+    }
+
+    // ---------- Appel API backend (Flask) ----------
+    async function sendToLumina(message) {
+        statusDiv.textContent = "🧃🌎 réflexion...";
+        const enhancedMessage = `[Contexte: Tu es l'assistant Lumina. Tu peux jouer de la musique (commande "joue ..."), voir et décrire des images (tu reçois la description visuelle), parler via synthèse vocale, et répondre aux questions. Voici la demande de l'utilisateur:] ${message}`;
+        try {
+            const res = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: enhancedMessage })
+            });
+            const data = await res.json();
+            if (data.reply) return data.reply;
+            else return "Erreur : réponse vide.";
+        } catch (e) {
+            return `Erreur réseau : ${e.message}`;
+        } finally {
+            statusDiv.textContent = "Prêt";
+        }
+    }
+
+    // ---------- Vision (MobileNet) ----------
+    async function loadModel() {
+        statusDiv.textContent = "📦 Chargement vision...";
+        mobilenetModel = await mobilenet.load();
+        statusDiv.textContent = "Prêt";
+    }
+    loadModel();
+
+    async function describeImage(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const img = new Image();
+                img.onload = async () => {
+                    const predictions = await mobilenetModel.classify(img);
+                    if (predictions && predictions.length) {
+                        const descriptions = predictions.slice(0, 3).map(p => `${p.className} (${Math.round(p.probability*100)}%)`).join(", ");
+                        resolve(`Je vois : ${descriptions}.`);
+                    } else {
+                        resolve("Je ne reconnais pas cette image.");
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    imageInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            addMessage("user", "", true, ev.target.result);
+        };
+        reader.readAsDataURL(file);
+        const description = await describeImage(file);
+        const reply = await sendToLumina(description);
+        addMessage("assistant", reply);
+        speak(reply);
+        imageInput.value = "";
+    });
+
+    // ---------- Gestion des messages utilisateur ----------
+    async function sendMessage() {
+        let msg = userInput.value.trim();
+        if (!msg) return;
+        userInput.value = "";
+        addMessage("user", msg);
+
+        const lowerMsg = msg.toLowerCase();
+        if (lowerMsg.startsWith("joue ")) {
+            const query = msg.slice(5).trim();
+            if (query.startsWith("http")) {
+                playMusic(query);
+                addMessage("assistant", `🎵 Je joue depuis l'URL fournie.`);
+                return;
+            } else {
+                const success = await searchAndPlayMusic(query);
+                if (!success) {
+                    playMusic(songSelect.value);
+                    addMessage("assistant", `🎵 Je joue ${songSelect.options[songSelect.selectedIndex].text} par défaut.`);
+                }
+                return;
+            }
+        } else if (lowerMsg.startsWith("cherche musique ")) {
+            const query = msg.slice(16).trim();
+            await searchAndPlayMusic(query);
+            return;
+        }
+
+        const reply = await sendToLumina(msg);
+        addMessage("assistant", reply);
+        speak(reply);
+    }
+
+    speakLastBtn.onclick = () => {
+        if (lastReply) speak(lastReply);
+        else addMessage("assistant", "Aucune réponse à lire.");
+    };
+
+    sendBtn.onclick = sendMessage;
+    userInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
+
+    addMessage("assistant", "🧃🌎 Bonjour ! Je suis Lumina. Je peux voir tes images, jouer de la musique (dis 'joue [titre]'), parler, et bien plus encore. Que veux-tu ?");
+
+<
+</script>
+</body>
+</html>
+
+	"	<
+=
