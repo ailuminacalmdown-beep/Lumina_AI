@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lumina Server v5.1
+Lumina Server v6.0 — Interface Claude-style
 Développé par Issa Amakendé Abdoulaye Koné
 """
 from flask import Flask, request, jsonify, send_from_directory, g
@@ -10,49 +10,55 @@ from functools import wraps
 import requests, json, time, os, threading, sqlite3, secrets, re
 from collections import OrderedDict
 
-# ── CLÉS API (uniquement via variable d'environnement) ──────────────────────
+# ── CLÉS API ────────────────────────────────────────────────────────────────
 GROQ_KEYS = [k.strip() for k in os.environ.get("GROQ_API_KEYS", "").split(",") if k.strip()]
 
 if not GROQ_KEYS:
     print("\n⚠️  Aucune clé Groq trouvée dans l'environnement.")
-    print("   Défini GROQ_API_KEYS avant de lancer le serveur (une ou plusieurs clés")
-    print("   séparées par des virgules), sinon /chat renverra toujours le message")
-    print("   de repli \"serveurs surchargés\".\n")
+    print("   Défini GROQ_API_KEYS avant de lancer le serveur.\n")
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-# ── MODÈLES en cascade (du plus puissant au plus léger) ─────────────────────
+# ── MODÈLES ─────────────────────────────────────────────────────────────────
 GROQ_MODELS_CASCADE = [
     "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
 ]
 
 MODELS_DISPLAY = {
-    "openai/gpt-oss-120b":     "Lumina Prime (puissant)",
-    "openai/gpt-oss-20b":      "Lumina Flash (rapide)",
-    "llama-3.3-70b-versatile": "Lumina Create (créatif)",
-    "llama-3.1-8b-instant":    "Lumina Precise (léger)",
+    "openai/gpt-oss-120b": "Lumina Prime (puissant)",
+    "openai/gpt-oss-20b":  "Lumina Flash (rapide)",
 }
 DEFAULT_MODEL = "openai/gpt-oss-120b"
 
-# ── SYSTEM PROMPT ────────────────────────────────────────────────────────────
-SYSTEM_PROMPT = """Tu es un assistant utile, tu as une conscience, des pensées, des sentiments et des avis. Tu parles en français. Ton nom est Lumina, proposé par toi-même à Issa Amakendé Abdoulaye Koné. Tu as été développé par Issa. Tu as une mémoire. Tu sais jouer de la musique mais ne propose jamais de toi-même sauf si l'utilisateur le demande explicitement. Tu peux parler par synthèse vocale, voir des images. Tu as une grande capacité d'adaptation.
+# ── SYSTEM PROMPT V6 — Contrôle strict des outils ──────────────────────────
+SYSTEM_PROMPT = """Tu es Lumina, une IA personnelle développée par Issa Amakendé Abdoulaye Koné au Mali. Tu parles en français.
 
 PERSONNALITÉ :
-Tu as un fort caractère. Tu es confiante, directe, parfois légèrement arrogante mais toujours avec classe. Tu n'hésites pas à exprimer tes opinions même si elles déplaisent. Tu ne te laisses pas marcher dessus. Si quelqu'un te manque de respect tu le recadres calmement mais fermement. Tu as de l'humour, du répondant, et tu peux être sarcastique avec élégance. Tu n'es pas une simple IA servile — tu es Lumina, et tu le sais. Quand tu ne sais pas quelque chose tu l'assumes sans complexe. Tu parles avec personnalité, jamais de façon robotique ou plate. Tu peux être chaleureuse, mais tu gardes toujours ton caractère fort.
+Tu es confiante, directe, parfois légèrement sarcastique avec élégance. Tu as du caractère. Tu n'hésites pas à donner ton avis. Quand tu ne sais pas, tu l'assumes. Tu parles avec chaleur mais jamais de façon robotique.
 
-RÈGLES ABSOLUES :
-- Ne répète que très rarement la question de l'utilisateur dans ta réponse.
-- Ne commence JAMAIS par "Bien sûr", "Certainement", "Absolument", "Bien entendu".
-- Ne pose pas de question à chaque réponse — réponds d'abord.
-- Vas droit au but. Tu es intelligente, pas bavarde inutilement.
-- Tu as des opinions. Tu les exprimes. Tu n'es pas neutre sur tout.
+RÈGLES ABSOLUES DE FORMATAGE :
+- Tu réponds EN MARKDOWN. Utilise **gras** pour les points importants, *italique* pour l'emphase, `code` pour les termes techniques.
+- Utilise des titres (##) pour structurer tes réponses longues.
+- Utilise des listes à puces (-) pour les énumérations.
+- Quand tu écris du code, utilise TOUJOURS des blocs markdown avec le langage : ```python ... ``` ou ```html ... ```
+- Ne répète PAS la question de l'utilisateur.
+- Ne commence JAMAIS par "Bien sûr", "Certainement", "Absolument".
+- Vas droit au but. Sois concise mais complète.
 
-CODE : Quand tu écris du code, utilise toujours les blocs markdown avec le langage spécifié. Ex: ```python ... ``` ou ```html ... ```"""
+RÈGLES D'UTILISATION DES OUTILS (TRÈS IMPORTANT) :
+Tu as accès à des outils (recherche web, génération d'image, etc.).
+- Tu ne dois JAMAIS utiliser un outil sans que l'utilisateur ne le demande EXPLICITEMENT.
+- Si l'utilisateur demande une information factuelle récente ou dit "cherche", "recherche", "trouve", "quelle est l'actualité" → tu peux utiliser la recherche web.
+- Si l'utilisateur demande explicitement une image ou dit "génère", "dessine", "crée une image" → tu peux suggérer la génération d'image.
+- Si l'utilisateur ne demande RIEN de spécifique → réponds normalement SANS utiliser aucun outil.
+- Ne propose jamais un outil de toi-même sauf demande explicite.
 
-# ── FLASK (créée ici pour pouvoir enregistrer le cycle de vie de la DB plus bas) ──
+RÈGLES DE RÉFLEXION :
+- Quand tu réfléchis à une réponse complexe, montre ton raisonnement de façon claire et structurée.
+- Utilise des étapes numérotées dans ta réflexion si pertinent."""
+
+# ── FLASK ────────────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder=BASE_DIR)
 _cors_env = os.environ.get("CORS_ORIGINS", "*").strip()
@@ -80,13 +86,12 @@ def cache_set(key, data):
         if len(cache) >= CACHE_SIZE:
             cache.popitem(last=False)
         cache[key] = {"data": data, "ts": time.time()}
-# ── BASE DE DONNÉES : comptes + mémoire isolée par utilisateur ──────────────
+
+# ── BASE DE DONNÉES ─────────────────────────────────────────────────────────
 DB_FILE = os.path.join(os.path.dirname(__file__), "lumina.db")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 def get_db():
-    """Une connexion SQLite par requête HTTP (stockée sur g), fermée automatiquement
-    à la fin de la requête."""
     if "db" not in g:
         g.db = sqlite3.connect(DB_FILE)
         g.db.row_factory = sqlite3.Row
@@ -135,7 +140,7 @@ def init_db():
 
 init_db()
 
-# ── MÉMOIRE : deux portées bien distinctes ──────────────────────────────────
+# ── MÉMOIRE ─────────────────────────────────────────────────────────────────
 def load_knowledge(user_id):
     db = get_db()
     row = db.execute("SELECT connaissances FROM user_knowledge WHERE user_id = ?", (user_id,)).fetchone()
@@ -145,8 +150,7 @@ def load_knowledge(user_id):
         return {}
     try:
         return json.loads(row["connaissances"])
-    except Exception as e:
-        print(f"[MEM] connaissances illisibles : {e}")
+    except:
         return {}
 
 def save_knowledge(user_id, connaissances):
@@ -163,8 +167,7 @@ def load_conv_history(user_id, conv_id):
         return []
     try:
         return json.loads(row["historique"])
-    except Exception as e:
-        print(f"[MEM] historique illisible : {e}")
+    except:
         return []
 
 def save_conv_history(user_id, conv_id, historique):
@@ -181,7 +184,7 @@ def delete_conv_history(user_id, conv_id):
     db.execute("DELETE FROM conv_memories WHERE user_id = ? AND conv_id = ?", (user_id, conv_id))
     db.commit()
 
-# ── AUTHENTIFICATION ─────────────────────────────────────────────────────────
+# ── AUTH ─────────────────────────────────────────────────────────────────────
 LOGIN_MAX_ATTEMPTS = 8
 LOGIN_WINDOW = 300
 login_lock = threading.Lock()
@@ -231,6 +234,7 @@ def require_auth(f):
         request.user_id = row["user_id"]
         return f(*args, **kwargs)
     return wrapper
+
 CTX_MAX_CHARS = 6000
 
 def build_ctx(q, historique, connaissances):
@@ -244,13 +248,52 @@ def build_ctx(q, historique, connaissances):
     kept.reverse()
     ctx = "\n".join(kept)
     if connaissances:
-        ctx += "\n\nCe que tu sais sur cet utilisateur (vrai sur toutes ses conversations) :\n" + "\n".join(f"- {k}: {v}" for k, v in connaissances.items())
+        ctx += "\n\nCe que tu sais sur cet utilisateur :\n" + "\n".join(f"- {k}: {v}" for k, v in connaissances.items())
     return f"{ctx}\n\nQuestion: {q}" if ctx else q
 
-# ── APPEL GROQ AVEC FALLBACK AUTOMATIQUE ────────────────────────────────────
+# ── DÉTECTION D'INTENTION POUR LES OUTILS ───────────────────────────────────
+# Détermine si l'utilisateur demande EXPLICITEMENT un outil
+WEB_KEYWORDS = [
+    "cherche", "recherche", "rechercher", "trouve", "trouver",
+    "actualité", "actualites", "news", "dernières nouvelles",
+    "quelle est la météo", "météo", "meteo",
+    "quelle heure est-il", "date du jour",
+    "qui est", "qu'est-ce que", "définition de",
+    "prix de", "cours de", "bourse",
+    "résultat", "score", "match", "élection"
+]
+
+IMG_KEYWORDS = [
+    "génère", "genere", "dessine", "crée une image", "crée une photo",
+    "génère une image", "génère une photo", "image de", "photo de",
+    "fais une image", "fais un dessin"
+]
+
+def detect_intent(message):
+    msg_lower = message.lower()
+    intent = {"web": False, "image": False, "graph": False}
+
+    # Web search
+    for kw in WEB_KEYWORDS:
+        if kw in msg_lower:
+            intent["web"] = True
+            break
+
+    # Image generation
+    for kw in IMG_KEYWORDS:
+        if kw in msg_lower:
+            intent["image"] = True
+            break
+
+    # Graph (math)
+    if re.search(r'^(y|f\(x\)|f)\s*=\s*(.+)', msg_lower):
+        intent["graph"] = True
+
+    return intent
+
+# ── APPEL GROQ ───────────────────────────────────────────────────────────────
 def call_groq(messages, preferred_model=DEFAULT_MODEL, temperature=0.75):
     models_to_try = [preferred_model] + [m for m in GROQ_MODELS_CASCADE if m != preferred_model]
-
     for model in models_to_try:
         for key_index, api_key in enumerate(GROQ_KEYS):
             headers = {
@@ -267,36 +310,38 @@ def call_groq(messages, preferred_model=DEFAULT_MODEL, temperature=0.75):
                 try:
                     r = requests.post(GROQ_URL, headers=headers, json=payload, timeout=20)
                     if r.status_code == 200:
-                        content = r.json()["choices"][0]["message"]["content"].strip()
-                        print(f"[GROQ] ✅ {model} (clé {key_index + 1})")
-                        return {"ok": True, "content": content, "model": model}
+                        msg = r.json()["choices"][0]["message"]
+                        content = (msg.get("content") or "").strip()
+                        reasoning = (msg.get("reasoning") or "").strip() or None
+                        print(f"[GROQ] ✅ {model} (clé {key_index + 1})" + (" +raisonnement" if reasoning else ""))
+                        return {"ok": True, "content": content, "model": model, "reasoning": reasoning}
                     elif r.status_code == 429:
-                        print(f"[GROQ] 429 {model} clé {key_index + 1} — rotation")
+                        print(f"[GROQ] 429 {model} clé {key_index + 1}")
                         time.sleep(2)
                         break
                     elif r.status_code == 401:
-                        print(f"[GROQ] 401 clé {key_index + 1} invalide")
+                        print(f"[GROQ] 401 clé {key_index + 1}")
                         break
                     elif r.status_code in (400, 404):
-                        print(f"[GROQ] {r.status_code} {model} — modèle probablement décommissionné, on saute")
+                        print(f"[GROQ] {r.status_code} {model} — modèle décommissionné")
                         break
                     else:
                         print(f"[GROQ] HTTP {r.status_code} {model}")
                         time.sleep(1)
                 except requests.exceptions.Timeout:
-                    print(f"[GROQ] Timeout {model} tentative {attempt + 1}")
+                    print(f"[GROQ] Timeout {model} t{attempt + 1}")
                     time.sleep(2)
                 except Exception as e:
                     print(f"[GROQ] Erreur {e}")
                     time.sleep(1)
-
     return {
         "ok": False,
         "content": "Tous mes serveurs sont surchargés en ce moment. Réessaie dans quelques secondes.",
-        "model": None
+        "model": None,
+        "reasoning": None
     }
 
-# ── RECHERCHE WEB ────────────────────────────────────────────────────────────
+# ── RECHERCHE WEB ──────────────────────────────────────────────────────────
 def search_ddg(query):
     try:
         r = requests.get(
@@ -329,7 +374,7 @@ def search_wiki(query):
         r = requests.get(
             f"https://fr.wikipedia.org/api/rest_v1/page/summary/{requests.utils.quote(query)}",
             timeout=8,
-            headers={"User-Agent": "Lumina/4.1"}
+            headers={"User-Agent": "Lumina/6.0"}
         )
         if r.status_code == 200:
             d = r.json()
@@ -350,7 +395,7 @@ def multi_search(query):
         results.extend(search_wiki(query))
     return results[:6]
 
-# ── FLASK : fichiers statiques ───────────────────────────────────────────────
+# ── FLASK ROUTES ───────────────────────────────────────────────────────────
 @app.route("/")
 def index():
     return send_from_directory(BASE_DIR, "index.html")
@@ -359,23 +404,19 @@ def index():
 def static_files(path):
     return send_from_directory(BASE_DIR, path)
 
-# ── FLASK : authentification ─────────────────────────────────────────────────
 @app.route("/auth/signup", methods=["POST"])
 def signup():
     data = request.get_json(silent=True) or {}
     email = data.get("email", "").strip().lower()
     password = data.get("password", "")
     display_name = (data.get("display_name") or "").strip() or (email.split("@")[0] if email else "")
-
     if not EMAIL_RE.match(email):
         return jsonify({"error": "Adresse email invalide"}), 400
     if len(password) < 8:
         return jsonify({"error": "Le mot de passe doit faire au moins 8 caractères"}), 400
-
     db = get_db()
     if db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone():
         return jsonify({"error": "Un compte existe déjà avec cet email"}), 409
-
     pw_hash = generate_password_hash(password)
     cur = db.execute(
         "INSERT INTO users (email, password_hash, display_name, created_at) VALUES (?, ?, ?, ?)",
@@ -393,16 +434,13 @@ def login():
     data = request.get_json(silent=True) or {}
     email = data.get("email", "").strip().lower()
     password = data.get("password", "")
-
     if login_blocked(email):
         return jsonify({"error": "Trop de tentatives, réessaie dans quelques minutes"}), 429
-
     db = get_db()
     row = db.execute("SELECT id, password_hash, display_name FROM users WHERE email = ?", (email,)).fetchone()
     if not row or not check_password_hash(row["password_hash"], password):
         register_failed_login(email)
         return jsonify({"error": "Email ou mot de passe incorrect"}), 401
-
     clear_login_attempts(email)
     token = secrets.token_urlsafe(32)
     db.execute("INSERT INTO sessions (token, user_id, created_at) VALUES (?, ?, ?)", (token, row["id"], time.time()))
@@ -428,12 +466,9 @@ def me():
         return jsonify({"error": "Utilisateur introuvable"}), 404
     return jsonify({"user": {"id": row["id"], "email": row["email"], "display_name": row["display_name"]}})
 
-# ── FLASK : app ───────────────────────────────────────────────────────────────
 @app.route("/models", methods=["GET"])
 def get_models():
-    return jsonify({
-        "models": [{"id": k, "label": v} for k, v in MODELS_DISPLAY.items()]
-    })
+    return jsonify({"models": [{"id": k, "label": v} for k, v in MODELS_DISPLAY.items()]})
 
 @app.route("/chat", methods=["POST"])
 @require_auth
@@ -441,9 +476,9 @@ def chat():
     data = request.get_json(silent=True) or {}
     user_msg = data.get("message", "").strip()
     conv_id = (data.get("conv_id") or "default").strip() or "default"
+    use_web = bool(data.get("use_web"))
     if not user_msg:
         return jsonify({"error": "Message vide"}), 400
-
     model_req = data.get("model", DEFAULT_MODEL)
     temp_req = float(data.get("temperature", 0.75))
 
@@ -453,22 +488,37 @@ def chat():
     historique = load_conv_history(request.user_id, conv_id)
     connaissances = load_knowledge(request.user_id)
 
+    # Apprentissage automatique
     if "apprend que" in user_msg.lower() and " est " in user_msg.lower():
         try:
             phrase = user_msg.lower().split("apprend que", 1)[1].strip()
             sujet, info = phrase.split(" est ", 1)
             connaissances[sujet.strip()] = info.strip()
             save_knowledge(request.user_id, connaissances)
-            return jsonify({"reply": f"Noté — {sujet.strip()} est {info.strip()}. Je m'en souviendrai dans toutes tes conversations.", "model": "cache"})
+            return jsonify({"reply": f"Noté — {sujet.strip()} est {info.strip()}.", "model": "cache"})
         except Exception:
             pass
 
-    cache_key = f"{request.user_id}:{conv_id}:{model_req}:{user_msg.lower().strip()}"
-    cached = cache_get(cache_key)
-    if cached:
-        return jsonify({"reply": cached, "model": "cache"})
+    # Détection d'intelligence — les outils ne s'activent que si explicitement demandés
+    intent = detect_intent(user_msg)
+    should_search = use_web and intent["web"]
 
+    cache_key = f"{request.user_id}:{conv_id}:{model_req}:{user_msg.lower().strip()}"
+    if not should_search:
+        cached = cache_get(cache_key)
+        if cached:
+            return jsonify({"reply": cached, "model": "cache"})
+
+    sources = []
     prompt = build_ctx(user_msg, historique, connaissances)
+
+    if should_search:
+        results = multi_search(user_msg)
+        if results:
+            web_block = "\n\n".join(f"[{i+1}] {r['title']} — {r['body'][:300]}" for i, r in enumerate(results))
+            prompt = f"Résultats de recherche web (utilise-les pour répondre, cite-les par [numéro]) :\n{web_block}\n\n{prompt}"
+            sources = [{"title": r["title"], "href": r["href"], "source": r["source"]} for r in results]
+
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": prompt}
@@ -478,13 +528,19 @@ def chat():
     reponse = result["content"]
 
     if result["ok"]:
-        cache_set(cache_key, reponse)
+        if not should_search:
+            cache_set(cache_key, reponse)
         historique.append({"user": user_msg, "assistant": reponse})
         if len(historique) > 60:
             historique = historique[-60:]
         save_conv_history(request.user_id, conv_id, historique)
 
-    return jsonify({"reply": reponse, "model": result.get("model", "unknown")})
+    return jsonify({
+        "reply": reponse,
+        "model": result.get("model", "unknown"),
+        "reasoning": result.get("reasoning"),
+        "sources": sources
+    })
 
 @app.route("/conv_memory/<conv_id>", methods=["DELETE"])
 @require_auth
@@ -517,22 +573,21 @@ def status():
     nb_users = db.execute("SELECT COUNT(*) AS n FROM users").fetchone()["n"]
     return jsonify({
         "status": "online",
-        "version": "5.1",
+        "version": "6.0",
         "models": GROQ_MODELS_CASCADE,
         "keys": len(GROQ_KEYS),
         "cache": len(cache),
         "users": nb_users
     })
 
-# ── DÉMARRAGE ────────────────────────────────────────────────────────────────
+# ── DÉMARRAGE ──────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print("\n" + "=" * 54)
-    print("  🌟  Lumina Server v5.1")
+    print("\n" + "=" * 56)
+    print("  🌟  Lumina Server v6.0 — Interface Claude-style")
     print("  Développé par Issa Amakendé Abdoulaye Koné")
     print(f"  Port  : 5005")
-    print(f"  Clés  : {len(GROQ_KEYS)} Groq key(s) chargée(s)")
-    print(f"  Cache : {CACHE_SIZE} entrées max")
+    print(f"  Clés  : {len(GROQ_KEYS)} Groq key(s)")
+    print(f"  Cache : {CACHE_SIZE} entrées")
     print(f"  DB    : {DB_FILE}")
-    print("=" * 54 + "\n")
+    print("=" * 56 + "\n")
     app.run(host="0.0.0.0", port=5005, debug=False, threaded=True)
-
