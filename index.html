@@ -864,8 +864,8 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
 <input type="file" id="fileInp" accept="*/*" style="display:none">
 
 <script>
-const API = `http://${location.hostname}:5005/chat`;
-const AUTH_API = `http://${location.hostname}:5005/auth`;
+const API = `/chat`;
+const AUTH_API = `/auth`;
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
     navigator.serviceWorker.register("/sw.js").catch(e=>console.error("[SW]",e));
