@@ -1,6 +1,27 @@
+# Secrets — ne JAMAIS committer
+.env
+.env.*
+
+# Base de données locale (comptes utilisateurs, mots de passe hachés, mémoire)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+memoire_lumina.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Système
+.DS_Store
+
+# Lumina local files
 icon-192.png
 icon-512.png
-lumina.db
 *.bak
 *.old
 index.html-*

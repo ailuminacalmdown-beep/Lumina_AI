@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lumina Test</title>
+</head>
+<body>
+    <div id="chat"></div>
+    <input id="msg" placeholder="Message">
+    <button id="send">Envoyer</button>
+    <script>
+        const API_URL = "http://127.0.0.1:5000/chat";
+        const chatDiv = document.getElementById("chat");
+        const msgInput = document.getElementById("msg");
+        const sendBtn = document.getElementById("send");
+
+        function addMessage(text, isUser) {
+            const p = document.createElement("p");
+            p.textContent = (isUser ? "Vous : " : "Lumina : ") + text;
+            chatDiv.appendChild(p);
+        }
+
+        async function sendMessage() {
+            const msg = msgInput.value.trim();
+            if (!msg) return;
+            msgInput.value = "";
+            addMessage(msg, true);
+            try {
+                const res = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: msg })
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                addMessage(data.reply || "Pas de réponse", false);
+            } catch(e) {
+                addMessage("Erreur : " + e.message, false);
+            }
+        }
+
+        sendBtn.onclick = sendMessage;
+        msgInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
+        addMessage("Test prêt. Envoie un message.", false);
+    </script>
+</body>
+</html>
