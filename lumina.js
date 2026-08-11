@@ -1,7 +1,7 @@
 // ============================================================
 // LUMINA — CORE
 // ============================================================
-const API = `http://${location.hostname}:5005/chat`;
+const API = `/chat`;
 const JAMENDO = "127d581d";
 
 const MODELS = [
@@ -1029,7 +1029,7 @@ async function callBackend(msg){
       body:JSON.stringify({message:msg,model:model.model,temperature:0.75})});
     if(!r.ok)return"Erreur serveur ("+r.status+"). Vérifie que Flask tourne sur le port 5005.";
     const d=await r.json();return d.reply||d.response||d.text||"Pas de réponse.";
-  }catch(e){return"⚠️ Impossible de joindre Lumina sur le port 5005. Vérifie que ton serveur Flask est lancé (http://localhost:5005/chat).";}
+  }catch(e){return"⚠️ Impossible de joindre Lumina. Vérifie la connexion au serveur.";}
 }
 
 // ============================================================
