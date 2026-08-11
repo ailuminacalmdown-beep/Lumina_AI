@@ -318,7 +318,214 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
 .sl-inp::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#a78bfa);cursor:pointer;box-shadow:0 2px 8px var(--accent-glow);}
 
 /* Audio bar */
-.aud-bar{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin:8px 0;display:flex;align-items:center;gap:10px;max-width:400px;}
+/* ============================================================
+   LUMINA — LECTEUR AUDIO
+   ============================================================ */
+
+.aud-bar{
+  width:100%;
+  max-width:520px;
+  margin:10px 0;
+  padding:10px 12px;
+  box-sizing:border-box;
+  background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.018));
+  border:1px solid var(--border);
+  border-radius:16px;
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  box-shadow:0 8px 28px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.035);
+  animation:audBarIn .28s ease both;
+}
+
+@keyframes audBarIn{
+  from{opacity:0;transform:translateY(8px) scale(.985);}
+  to{opacity:1;transform:translateY(0) scale(1);}
+}
+
+.aud-main{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  width:100%;
+}
+
+.aud-control{
+  width:34px;
+  height:34px;
+  padding:0;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface);
+  color:var(--txt2);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  flex-shrink:0;
+  transition:transform .18s ease,color .18s ease,background .18s ease,border-color .18s ease;
+}
+
+.aud-control:hover{
+  color:var(--txt);
+  background:var(--surf2);
+  border-color:var(--border2);
+  transform:translateY(-1px);
+}
+
+.aud-control:active{transform:scale(.94);}
+
+.aud-control svg{
+  width:15px;
+  height:15px;
+  display:block;
+}
+
+.aud-play{
+  width:38px;
+  height:38px;
+  color:#fff;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;
+  box-shadow:0 5px 18px rgba(138,92,246,.22);
+}
+
+.aud-play:hover{
+  color:#fff;
+  border:none;
+  filter:brightness(1.08);
+}
+
+.aud-play-icon{
+  width:16px !important;
+  height:16px !important;
+}
+
+.aud-info{
+  flex:1;
+  min-width:0;
+}
+
+.aud-title{
+  color:var(--txt);
+  font-size:.76rem;
+  font-weight:650;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  margin:0 2px 6px;
+}
+
+.aud-time-row{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  color:var(--txt3);
+  font-size:.61rem;
+  font-variant-numeric:tabular-nums;
+}
+
+.aud-track{
+  position:relative;
+  flex:1;
+  height:14px;
+  display:flex;
+  align-items:center;
+  cursor:pointer;
+  touch-action:none;
+}
+
+.aud-track::before{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  height:3px;
+  background:var(--bg-secondary);
+  border-radius:999px;
+}
+
+.aud-fill{
+  position:absolute;
+  left:0;
+  height:3px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  border-radius:999px;
+  width:0%;
+  pointer-events:none;
+}
+
+.aud-thumb{
+  position:absolute;
+  width:8px;
+  height:8px;
+  margin-left:-4px;
+  border-radius:50%;
+  background:var(--accent2);
+  box-shadow:0 0 0 3px rgba(138,92,246,.10),0 0 12px rgba(138,92,246,.38);
+  left:0;
+  pointer-events:none;
+}
+
+.aud-stop{
+  width:30px;
+  height:30px;
+  color:var(--err);
+  background:rgba(248,113,113,.055);
+  border-color:rgba(248,113,113,.13);
+}
+
+.aud-stop:hover{
+  color:#fff;
+  background:rgba(248,113,113,.15);
+  border-color:rgba(248,113,113,.25);
+}
+
+.aud-stop svg{
+  width:13px;
+  height:13px;
+}
+
+.aud-waves{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  height:28px;
+  padding:0 3px;
+  flex-shrink:0;
+}
+
+.aud-w{
+  width:2px;
+  height:9px;
+  border-radius:99px;
+  background:var(--accent);
+  opacity:.55;
+  animation:audWave .85s ease-in-out infinite;
+}
+
+.aud-w:nth-child(2){height:16px;animation-delay:.12s;}
+.aud-w:nth-child(3){height:22px;animation-delay:.22s;}
+.aud-w:nth-child(4){height:14px;animation-delay:.16s;}
+.aud-w:nth-child(5){height:8px;animation-delay:.06s;}
+
+@keyframes audWave{
+  0%,100%{transform:scaleY(.55);opacity:.35;}
+  50%{transform:scaleY(1);opacity:.9;}
+}
+
+.aud-bar.aud-paused .aud-w{
+  animation-play-state:paused;
+  transform:scaleY(.55);
+  opacity:.3;
+}
+
+@media(max-width:520px){
+  .aud-bar{max-width:100%;}
+  .aud-waves{display:none;}
+  .aud-control{width:32px;height:32px;}
+  .aud-play{width:36px;height:36px;}
+}
 .aud-play{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#a78bfa);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity var(--dur-fast);}
 .aud-play:hover{opacity:.9;}
 .aud-play svg{width:14px;height:14px;}
@@ -1026,7 +1233,7 @@ function stopAll(){
   RT.stopReqConvs.add(ST.convs.cur);RT.streamingConvs.delete(ST.convs.cur);
   stopTTS();
   if(RT.audio){RT.audio.pause();RT.audio=null;}
-  document.getElementById("audBarEl")?.remove();
+  document.getElementById("audioBar")?.remove();
   const sb=document.getElementById("sendBtn");
   sb.classList.remove("stop-mode");
   sb.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
@@ -1647,63 +1854,154 @@ function stopTTS(){
   if(RT.ttsHackId){clearInterval(RT.ttsHackId);RT.ttsHackId=null;}
   if(RT.ttsWatchdog){clearTimeout(RT.ttsWatchdog);RT.ttsWatchdog=null;}
   if(window.speechSynthesis)window.speechSynthesis.cancel();
-  RT.ttsQ=[];RT.ttsBusy=false;RT.speech=null;RT.ttsNext=null;
-  document.getElementById("ttsBtn").classList.remove("tts-on");
+  RT.ttsQ=[];
+  RT.ttsBusy=false;
+  RT.speech=null;
+  RT.ttsNext=null;
+  document.getElementById("ttsBtn")?.classList.remove("tts-on");
 }
-function cleanTxt(t){return t.replace(/```[\s\S]*?```/g," code.").replace(/\*+([^*]+)\*+/g,"$1").replace(/#+\s/g,"").replace(/`[^`]+`/g,"").replace(/https?:\/\/\S+/g," lien.").replace(/\n{2,}/g,". ").replace(/\n/g," ").replace(/\s{2,}/g," ").trim();}
+
+function cleanTxt(t){
+  return t
+    .replace(/```[\s\S]*?```/g," code.")
+    .replace(/\*\*([^*]+)\*\*/g,"$1")
+    .replace(/\*([^*]+)\*/g,"$1")
+    .replace(/#+\s/g,"")
+    .replace(/`([^`]+)`/g,"$1")
+    .replace(/https?:\/\/\S+/g," lien.")
+    .replace(/_{1,2}([^_]+)_{1,2}/g,"$1")
+    .replace(/\n{2,}/g,". ")
+    .replace(/\n/g," ")
+    .replace(/\s{2,}/g," ")
+    .trim();
+}
+
 function speakFull(text,onDone=null){
-  stopTTS();if(!window.speechSynthesis){if(onDone)onDone();return;}
-  const clean=cleanTxt(text);if(!clean){if(onDone)onDone();return;}
-  // Lire TOUT le message d'un seul tenant pour une expérience fluide
-  const sents=[clean];
-  RT.ttsQ=sents.length?sents:[clean];RT.ttsBusy=true;document.getElementById("ttsBtn").classList.add("tts-on");
-  // Anti-bug Chrome/Android : le moteur de synthèse s'endort après ~15s d'inactivité
-  // et coupe la lecture en cours. On le maintient réveillé tant qu'on lit encore.
-  RT.ttsHackId=setInterval(()=>{
-    if(!RT.ttsBusy){clearInterval(RT.ttsHackId);RT.ttsHackId=null;return;}
-    if(window.speechSynthesis.speaking&&!window.speechSynthesis.paused){window.speechSynthesis.pause();window.speechSynthesis.resume();}
-  },3000);
-  function next(){
-    if(!RT.ttsBusy||!RT.ttsQ.length){stopTTS();if(onDone)onDone();return;}
-    const chunk=RT.ttsQ.shift();const utt=new SpeechSynthesisUtterance(chunk);utt.lang="fr-FR";utt.rate=.95;utt.pitch=1;utt.volume=1;
-    const vcs=window.speechSynthesis.getVoices();
-    // Priorité: voix Google ou Microsoft en français, plus naturelles
-    const preferred=vcs.find(v=>v.lang.toLowerCase().startsWith("fr")&&/google|microsoft|natural|premium|enhanced/i.test(v.name))
-      ||vcs.find(v=>v.lang.toLowerCase().startsWith("fr")&&/thomas|amelie|marie|denise|celine|paul|jerome/i.test(v.name))
-      ||vcs.find(v=>v.lang.toLowerCase()==="fr-fr")
-      ||vcs.find(v=>v.lang.toLowerCase().startsWith("fr"));
-    if(preferred)utt.voice=preferred;
-    utt.rate=1.0;utt.pitch=1.0;utt.volume=1.0;
-    let settled=false;
-    const advance=()=>{if(settled)return;settled=true;if(RT.ttsWatchdog){clearTimeout(RT.ttsWatchdog);RT.ttsWatchdog=null;}if(RT.ttsBusy)setTimeout(next,35);};
-    utt.onend=advance;utt.onerror=advance;
-    // Filet de sécurité : sur les textes longs, Chrome ne déclenche parfois jamais
-    // onend (bug connu de l'API Web Speech). Sans ça, la lecture restait bloquée
-    // en silence sans jamais atteindre la fin du texte. On force la suite si rien
-    // ne s'est passé après la durée estimée de la phrase + marge.
-    RT.ttsWatchdog=setTimeout(advance,Math.max(3000,chunk.length*120));
-    RT.speech=utt;
-    try{window.speechSynthesis.speak(utt);}catch(e){advance();}
+  stopTTS();
+
+  if(!window.speechSynthesis){
+    if(onDone)onDone();
+    return;
   }
-  RT.ttsNext=next; // accessible depuis la reprise après mise en arrière-plan (visibilitychange)
+
+  const clean=cleanTxt(text);
+  if(!clean){
+    if(onDone)onDone();
+    return;
+  }
+
+  // Découpage en petites phrases pour éviter les coupures Android/Chrome.
+  const raw=clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[clean];
+  const sentences=[];
+
+  for(let part of raw){
+    part=part.trim();
+    if(!part)continue;
+
+    // Les morceaux trop longs sont eux-mêmes découpés.
+    while(part.length>180){
+      let cut=part.lastIndexOf(",",180);
+      if(cut<70)cut=part.lastIndexOf(" ",180);
+      if(cut<1)cut=180;
+
+      sentences.push(part.slice(0,cut).trim());
+      part=part.slice(cut).trim();
+    }
+
+    if(part)sentences.push(part);
+  }
+
+  RT.ttsQ=sentences.length?sentences:[clean];
+  RT.ttsBusy=true;
+
+  const btn=document.getElementById("ttsBtn");
+  if(btn)btn.classList.add("tts-on");
+
+  function next(){
+    if(!RT.ttsBusy||RT.ttsQ.length===0){
+      stopTTS();
+      if(onDone)onDone();
+      return;
+    }
+
+    const chunk=RT.ttsQ.shift();
+    const utt=new SpeechSynthesisUtterance(chunk);
+
+    utt.lang="fr-FR";
+    utt.rate=0.95;
+    utt.pitch=1;
+    utt.volume=1;
+
+    const voices=window.speechSynthesis.getVoices();
+
+    const voice=
+      voices.find(v=>v.lang?.toLowerCase().startsWith("fr") &&
+        /google|microsoft|natural|premium|enhanced/i.test(v.name))
+      || voices.find(v=>v.lang?.toLowerCase()==="fr-fr")
+      || voices.find(v=>v.lang?.toLowerCase().startsWith("fr"));
+
+    if(voice)utt.voice=voice;
+
+    let finished=false;
+
+    const advance=()=>{
+      if(finished)return;
+      finished=true;
+
+      if(RT.ttsWatchdog){
+        clearTimeout(RT.ttsWatchdog);
+        RT.ttsWatchdog=null;
+      }
+
+      if(RT.ttsBusy)setTimeout(next,50);
+    };
+
+    utt.onend=advance;
+    utt.onerror=advance;
+
+    // Sécurité supplémentaire si Android ne déclenche pas onend.
+    RT.ttsWatchdog=setTimeout(
+      advance,
+      Math.max(4000,chunk.length*110)
+    );
+
+    RT.speech=utt;
+
+    try{
+      window.speechSynthesis.speak(utt);
+    }catch(e){
+      advance();
+    }
+  }
+
+  RT.ttsNext=next;
   next();
 }
-// Sur mobile, verrouiller l'écran ou changer d'appli n'annule pas toujours proprement
-// la synthèse en cours : parfois elle se met en pause (cas géré par resume()), mais
-// parfois le moteur annule tout SANS jamais déclencher onend/onerror, la queue reste
-// bloquée pour de bon. On détecte ce second cas (RT.ttsBusy=true mais le moteur ne
-// parle plus et n'est pas non plus en pause) et on relance depuis le chunk suivant.
+
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState!=="visible"||!RT.ttsBusy)return;
+
   if(window.speechSynthesis?.paused){
     window.speechSynthesis.resume();
-  }else if(!window.speechSynthesis?.speaking&&RT.ttsNext){
-    if(RT.ttsWatchdog){clearTimeout(RT.ttsWatchdog);RT.ttsWatchdog=null;}
-    RT.ttsNext();
   }
 });
-document.getElementById("ttsBtn").onclick=()=>{if(RT.ttsBusy)stopTTS();else if(RT.lastReply)speakFull(RT.lastReply);else toast("Aucune réponse à lire");};
-if(window.speechSynthesis){window.speechSynthesis.getVoices();window.speechSynthesis.onvoiceschanged=()=>window.speechSynthesis.getVoices();}
+
+document.getElementById("ttsBtn").onclick=()=>{
+  if(RT.ttsBusy){
+    stopTTS();
+  }else if(RT.lastReply){
+    speakFull(RT.lastReply);
+  }else{
+    toast("Aucune réponse à lire");
+  }
+};
+
+if(window.speechSynthesis){
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged=()=>{
+    window.speechSynthesis.getVoices();
+  };
+}
 
 // ── VOICE INPUT ──
 let recog=null;
@@ -1847,16 +2145,182 @@ async function searchJamendo(q){
   try{const r=await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO}&format=json&limit=5&search=${encodeURIComponent(q)}&audiodownload=1&order=relevance`);const d=await r.json();if(d.results?.length&&d.results[0].audio){const t=d.results[0];playAudio(t.audio,`${t.name} — ${t.artist_name}`);await streamResp(`${t.name} par ${t.artist_name}\n\nJamendo · Musique libre`);return;}}catch(e){}
   await streamResp(`Aucun résultat pour "${q}".\n\nTu peux me demander de composer avec l'IA : "Génère une musique relaxante jazz"`);
 }
+
+
 function playAudio(url,name){
-  document.getElementById("audBarEl")?.remove();if(RT.audio){RT.audio.pause();}
-  RT.audio=new Audio(url);RT.audio.play().catch(()=>{});
-  const bar=document.createElement("div");bar.id="audBarEl";bar.className="aud-bar";
-  bar.innerHTML=`<button class="aud-play" id="audPlay"><svg viewBox="0 0 24 24" fill="white" width="13" height="13"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button><div class="aud-info"><div class="aud-title">${name}</div><div class="aud-track"><div class="aud-fill" id="audFill"></div></div></div><div class="aud-waves"><div class="aud-w"></div><div class="aud-w"></div><div class="aud-w"></div><div class="aud-w"></div><div class="aud-w"></div></div><button class="aud-stop" id="audStop"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button>`;
+  document.getElementById("audioBar")?.remove();
+  if(RT.audio){
+    RT.audio.pause();
+    RT.audio=null;
+  }
+
+  const audio=new Audio(url);
+  RT.audio=audio;
+
+  const bar=document.createElement("div");
+  bar.id="audioBar";
+  bar.className="aud-bar";
+
+  bar.innerHTML=`
+    <div class="aud-main">
+
+      <button class="aud-control" id="audBack" aria-label="Reculer de 10 secondes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12a8 8 0 1 0 2.3-5.7"/>
+          <path d="M4 4v5h5"/>
+          <path d="M12 8v8"/>
+          <path d="M9.5 12h5"/>
+        </svg>
+      </button>
+
+      <button class="aud-control aud-play" id="audPlay" aria-label="Lecture">
+        <svg class="aud-play-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5.2v13.6a1 1 0 0 0 1.52.86l10.1-6.8a1 1 0 0 0 0-1.72L9.52 4.34A1 1 0 0 0 8 5.2Z"/>
+        </svg>
+      </button>
+
+      <button class="aud-control" id="audForward" aria-label="Avancer de 10 secondes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 12a8 8 0 1 1-2.3-5.7"/>
+          <path d="M20 4v5h-5"/>
+          <path d="M12 8v8"/>
+          <path d="M9.5 12h5"/>
+        </svg>
+      </button>
+
+      <div class="aud-info">
+        <div class="aud-title">${name}</div>
+
+        <div class="aud-time-row">
+          <span id="audCurrent">0:00</span>
+
+          <div class="aud-track" id="audTrack">
+            <div class="aud-fill" id="audFill"></div>
+            <div class="aud-thumb" id="audThumb"></div>
+          </div>
+
+          <span id="audDuration">0:00</span>
+        </div>
+      </div>
+
+      <button class="aud-control aud-stop" id="audStop" aria-label="Arrêter">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <rect x="5" y="5" width="14" height="14" rx="2"/>
+        </svg>
+      </button>
+
+    </div>
+  `;
+
   document.getElementById("chat").appendChild(bar);
-  document.getElementById("audPlay").onclick=()=>{if(RT.audio.paused){RT.audio.play();document.getElementById("audPlay").innerHTML=`<svg viewBox="0 0 24 24" fill="white" width="13" height="13"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;}else{RT.audio.pause();document.getElementById("audPlay").innerHTML=`<svg viewBox="0 0 24 24" fill="white" width="13" height="13"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;}};
-  document.getElementById("audStop").onclick=()=>{RT.audio.pause();RT.audio=null;bar.remove();};
-  RT.audio.ontimeupdate=()=>{if(!RT.audio?.duration)return;document.getElementById("audFill").style.width=(RT.audio.currentTime/RT.audio.duration*100)+"%";};
-  RT.audio.onended=()=>bar.remove();
+
+  const playBtn=document.getElementById("audPlay");
+  const fill=document.getElementById("audFill");
+  const thumb=document.getElementById("audThumb");
+  const track=document.getElementById("audTrack");
+  const current=document.getElementById("audCurrent");
+  const duration=document.getElementById("audDuration");
+
+  function formatTime(sec){
+    if(!Number.isFinite(sec))return "0:00";
+    sec=Math.max(0,Math.floor(sec));
+    const m=Math.floor(sec/60);
+    const s=String(sec%60).padStart(2,"0");
+    return `${m}:${s}`;
+  }
+
+  function updatePlayIcon(){
+    if(audio.paused){
+      playBtn.innerHTML=`
+        <svg class="aud-play-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5.2v13.6a1 1 0 0 0 1.52.86l10.1-6.8a1 1 0 0 0 0-1.72L9.52 4.34A1 1 0 0 0 8 5.2Z"/>
+        </svg>`;
+      playBtn.setAttribute("aria-label","Lecture");
+    }else{
+      playBtn.innerHTML=`
+        <svg class="aud-play-icon" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="6.5" y="5" width="4" height="14" rx="1"/>
+          <rect x="13.5" y="5" width="4" height="14" rx="1"/>
+        </svg>`;
+      playBtn.setAttribute("aria-label","Pause");
+    }
+  }
+
+  function updateProgress(){
+    if(!audio.duration||!Number.isFinite(audio.duration))return;
+
+    const pct=Math.min(100,Math.max(0,(audio.currentTime/audio.duration)*100));
+
+    fill.style.width=pct+"%";
+    thumb.style.left=pct+"%";
+    current.textContent=formatTime(audio.currentTime);
+    duration.textContent=formatTime(audio.duration);
+  }
+
+  function seekFromPointer(e){
+    if(!audio.duration)return;
+
+    const rect=track.getBoundingClientRect();
+    const x=Math.min(rect.width,Math.max(0,e.clientX-rect.left));
+    const pct=x/rect.width;
+
+    audio.currentTime=pct*audio.duration;
+    updateProgress();
+  }
+
+  playBtn.onclick=()=>{
+    if(audio.paused){
+      audio.play().catch(()=>{});
+    }else{
+      audio.pause();
+    }
+  };
+
+  document.getElementById("audBack").onclick=()=>{
+    audio.currentTime=Math.max(0,audio.currentTime-10);
+    updateProgress();
+  };
+
+  document.getElementById("audForward").onclick=()=>{
+    audio.currentTime=Math.min(audio.duration||0,audio.currentTime+10);
+    updateProgress();
+  };
+
+  document.getElementById("audStop").onclick=()=>{
+    audio.pause();
+    audio.currentTime=0;
+    RT.audio=null;
+    bar.remove();
+  };
+
+  // Slider interactif souris + tactile
+  track.addEventListener("pointerdown",e=>{
+    track.setPointerCapture?.(e.pointerId);
+    seekFromPointer(e);
+  });
+
+  track.addEventListener("pointermove",e=>{
+    if(e.buttons)seekFromPointer(e);
+  });
+
+  audio.addEventListener("loadedmetadata",()=>{
+    duration.textContent=formatTime(audio.duration);
+    updateProgress();
+  });
+
+  audio.addEventListener("timeupdate",updateProgress);
+  audio.addEventListener("play",updatePlayIcon);
+  audio.addEventListener("pause",updatePlayIcon);
+
+  audio.addEventListener("ended",()=>{
+    updateProgress();
+    updatePlayIcon();
+  });
+
+  updatePlayIcon();
+  audio.play().catch(()=>{});
 }
 
 // ── VISION / CAMÉRA ──

@@ -1064,11 +1064,38 @@ async function sendMessage(msgOverride, retry=false){
 
   if(!retry){
     if(tryPlot(msg)){finishStreaming();return;}
-    if(/^(génère|genere|dessine|crée une image|génère une image)\s+/i.test(msg)){
-      await generateImage(msg.replace(/^(génère|genere|dessine|crée une image|génère une image)\s+/i,"").trim());
-      finishStreaming();return;
+    // ── ACTIONS MULTIMÉDIA ──
+
+    // 🎵 Génération musicale : AVANT "génère" → image
+    if(/^(génère|genere|crée|cree|compose|produis|fais)\s+(une\s+)?(musique|chanson|mélodie|melodie|beat|son)\b/i.test(msg)){
+      const prompt = msg.replace(
+        /^(génère|genere|crée|cree|compose|produis|fais)\s+(une\s+)?(musique|chanson|mélodie|melodie|beat|son)\s*/i,
+        ""
+      ).trim();
+
+      await generateMusicAI(prompt || "une musique agréable");
+      finishStreaming();
+      return;
     }
-    if(/^joue\s+/i.test(msg)){await playMusic(msg.replace(/^joue\s+/i,"").trim());finishStreaming();return;}
+
+    // ▶️ Lecture/recherche musicale → Jamendo
+    if(/^joue\s+/i.test(msg)){
+      await playMusic(msg.replace(/^joue\s+/i,"").trim());
+      finishStreaming();
+      return;
+    }
+
+    // 🖼️ Génération d'image
+    if(/^(génère|genere|dessine|crée une image|cree une image)\s+/i.test(msg)){
+      await generateImage(
+        msg.replace(
+          /^(génère|genere|dessine|crée une image|cree une image)\s+/i,
+          ""
+        ).trim()
+      );
+      finishStreaming();
+      return;
+    }
   }
 
   const reply=await callBackend(msg);
@@ -1223,15 +1250,195 @@ async function searchJamendo(q){
 }
 function playAudio(url,name){
   document.getElementById("audioBar")?.remove();
-  if(runtime.currentAudio){runtime.currentAudio.pause();}
-  runtime.currentAudio=new Audio(url);runtime.currentAudio.play().catch(()=>{});
-  const bar=document.createElement("div");bar.id="audioBar";bar.className="audio-player";
-  bar.innerHTML=`<button class="aud-play" id="audPlay">⏸</button><div class="aud-info"><div class="aud-title">${name}</div><div class="aud-bar"><div class="aud-fill" id="audFill"></div></div></div><button class="aud-stop" id="audStop">■</button>`;
+  if(runtime.currentAudio){
+    runtime.currentAudio.pause();
+    runtime.currentAudio=null;
+  }
+
+  const audio=new Audio(url);
+  runtime.currentAudio=audio;
+
+  const bar=document.createElement("div");
+  bar.id="audioBar";
+  bar.className="aud-bar";
+
+  bar.innerHTML=`
+    <div class="aud-main">
+
+      <button class="aud-control" id="audBack" aria-label="Reculer de 10 secondes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12a8 8 0 1 0 2.3-5.7"/>
+          <path d="M4 4v5h5"/>
+          <path d="M12 8v8"/>
+          <path d="M9.5 12h5"/>
+        </svg>
+      </button>
+
+      <button class="aud-control aud-play" id="audPlay" aria-label="Lecture">
+        <svg class="aud-play-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5.2v13.6a1 1 0 0 0 1.52.86l10.1-6.8a1 1 0 0 0 0-1.72L9.52 4.34A1 1 0 0 0 8 5.2Z"/>
+        </svg>
+      </button>
+
+      <button class="aud-control" id="audForward" aria-label="Avancer de 10 secondes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 12a8 8 0 1 1-2.3-5.7"/>
+          <path d="M20 4v5h-5"/>
+          <path d="M12 8v8"/>
+          <path d="M9.5 12h5"/>
+        </svg>
+      </button>
+
+      <div class="aud-info">
+        <div class="aud-title">${name}</div>
+
+        <div class="aud-time-row">
+          <span id="audCurrent">0:00</span>
+
+          <div class="aud-track" id="audTrack">
+            <div class="aud-fill" id="audFill"></div>
+            <div class="aud-thumb" id="audThumb"></div>
+          </div>
+
+          <span id="audDuration">0:00</span>
+        </div>
+      </div>
+
+      <div class="aud-waves" aria-hidden="true">
+        <div class="aud-w"></div>
+        <div class="aud-w"></div>
+        <div class="aud-w"></div>
+        <div class="aud-w"></div>
+        <div class="aud-w"></div>
+      </div>
+
+      <button class="aud-control aud-stop" id="audStop" aria-label="Arrêter">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <rect x="5" y="5" width="14" height="14" rx="2"/>
+        </svg>
+      </button>
+
+    </div>
+  `;
+
   document.getElementById("chatArea").appendChild(bar);
-  document.getElementById("audPlay").onclick=()=>{if(runtime.currentAudio.paused){runtime.currentAudio.play();document.getElementById("audPlay").textContent="⏸";}else{runtime.currentAudio.pause();document.getElementById("audPlay").textContent="▶";}};
-  document.getElementById("audStop").onclick=()=>{runtime.currentAudio.pause();runtime.currentAudio=null;bar.remove();};
-  runtime.currentAudio.ontimeupdate=()=>{if(!runtime.currentAudio||!runtime.currentAudio.duration)return;document.getElementById("audFill").style.width=(runtime.currentAudio.currentTime/runtime.currentAudio.duration*100)+"%";};
-  runtime.currentAudio.onended=()=>bar.remove();
+
+  const playBtn=document.getElementById("audPlay");
+  const fill=document.getElementById("audFill");
+  const thumb=document.getElementById("audThumb");
+  const track=document.getElementById("audTrack");
+  const current=document.getElementById("audCurrent");
+  const duration=document.getElementById("audDuration");
+
+  function formatTime(sec){
+    if(!Number.isFinite(sec))return "0:00";
+    sec=Math.max(0,Math.floor(sec));
+    const m=Math.floor(sec/60);
+    const ss=String(sec%60).padStart(2,"0");
+    return `${m}:${ss}`;
+  }
+
+  function updatePlayIcon(){
+    if(audio.paused){
+      playBtn.innerHTML=`
+        <svg class="aud-play-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5.2v13.6a1 1 0 0 0 1.52.86l10.1-6.8a1 1 0 0 0 0-1.72L9.52 4.34A1 1 0 0 0 8 5.2Z"/>
+        </svg>`;
+      playBtn.setAttribute("aria-label","Lecture");
+      bar.classList.add("aud-paused");
+    }else{
+      playBtn.innerHTML=`
+        <svg class="aud-play-icon" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="6.5" y="5" width="4" height="14" rx="1"/>
+          <rect x="13.5" y="5" width="4" height="14" rx="1"/>
+        </svg>`;
+      playBtn.setAttribute("aria-label","Pause");
+      bar.classList.remove("aud-paused");
+    }
+  }
+
+  function updateProgress(){
+    if(!audio.duration||!Number.isFinite(audio.duration))return;
+
+    const pct=Math.min(
+      100,
+      Math.max(0,(audio.currentTime/audio.duration)*100)
+    );
+
+    fill.style.width=pct+"%";
+    thumb.style.left=pct+"%";
+    current.textContent=formatTime(audio.currentTime);
+    duration.textContent=formatTime(audio.duration);
+  }
+
+  function seekFromPointer(e){
+    if(!audio.duration)return;
+
+    const rect=track.getBoundingClientRect();
+    const x=Math.min(
+      rect.width,
+      Math.max(0,e.clientX-rect.left)
+    );
+
+    audio.currentTime=(x/rect.width)*audio.duration;
+    updateProgress();
+  }
+
+  playBtn.onclick=()=>{
+    if(audio.paused){
+      audio.play().catch(()=>{});
+    }else{
+      audio.pause();
+    }
+  };
+
+  document.getElementById("audBack").onclick=()=>{
+    audio.currentTime=Math.max(0,audio.currentTime-10);
+    updateProgress();
+  };
+
+  document.getElementById("audForward").onclick=()=>{
+    audio.currentTime=Math.min(
+      audio.duration||0,
+      audio.currentTime+10
+    );
+    updateProgress();
+  };
+
+  document.getElementById("audStop").onclick=()=>{
+    audio.pause();
+    audio.currentTime=0;
+    runtime.currentAudio=null;
+    bar.remove();
+  };
+
+  track.addEventListener("pointerdown",e=>{
+    track.setPointerCapture?.(e.pointerId);
+    seekFromPointer(e);
+  });
+
+  track.addEventListener("pointermove",e=>{
+    if(e.buttons)seekFromPointer(e);
+  });
+
+  audio.addEventListener("loadedmetadata",()=>{
+    duration.textContent=formatTime(audio.duration);
+    updateProgress();
+  });
+
+  audio.addEventListener("timeupdate",updateProgress);
+  audio.addEventListener("play",updatePlayIcon);
+  audio.addEventListener("pause",updatePlayIcon);
+
+  audio.addEventListener("ended",()=>{
+    updateProgress();
+    updatePlayIcon();
+  });
+
+  updatePlayIcon();
+  audio.play().catch(()=>{});
 }
 
 // ============================================================
