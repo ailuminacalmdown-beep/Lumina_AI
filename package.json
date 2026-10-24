@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "@capacitor-community/text-to-speech": "^8.0.2",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2"
+  },
+  "private": true,
+  "scripts": {
+    "cap:sync": "cap sync android",
+    "test:boot": "node tests/frontend_boot.test.js"
+  }
+}

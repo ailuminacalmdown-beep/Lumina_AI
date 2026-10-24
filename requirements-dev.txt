@@ -1,0 +1,4 @@
+# Tests de bout en bout dans un navigateur (facultatif). Les tests backend n'ont besoin de rien de plus.
+-r requirements.txt
+playwright>=1.45
+Pillow>=10

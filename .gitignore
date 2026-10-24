@@ -1,0 +1,43 @@
+# Secrets : ne JAMAIS committer
+.env
+.env.*
+!.env.example
+
+# Bases de données et sauvegardes (comptes, hashes de mots de passe, mémoire)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.db.backup*
+*.backup*
+*.sqlite*
+memoire_lumina.json
+
+# Archives d'export
+*.zip
+*.7z
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node / Android (les ressources web de l'APK sont régénérées par `npx cap sync`)
+node_modules/
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/public
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/local.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# Divers
+.DS_Store
+*.bak
+*.old

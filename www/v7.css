@@ -1,0 +1,219 @@
+/* Lumina v7 — surcharges chargées APRÈS le <style> de index.html.
+   Principes : mobile d'abord, animations déclenchées par l'action (pas de boucle inutile),
+   respect de prefers-reduced-motion et d'un réglage « Animations » dans les paramètres. */
+
+:root{
+  --sat:max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px));
+  --sab:max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px));
+  --lum-violet:#8b5cf6;--lum-pink:#e879f9;--lum-blue:#60a5fa;
+}
+
+/* ───────── 1. En-tête, barre d'état, zones sûres (capture : en-tête sous la barre d'état) ───────── */
+.header{height:calc(var(--hh) + var(--sat));padding-top:var(--sat);gap:8px}
+.h-left,.h-right{flex-shrink:0}
+.h-center{position:static;transform:none;flex:1;min-width:0;justify-content:center}
+.conv-name{max-width:100%}
+.srch-bar{top:calc(var(--hh) + var(--sat))}
+.toast{top:calc(68px + var(--sat))}
+.sidebar{padding-top:var(--sat)}
+.input-wrap{padding-bottom:max(12px,var(--sab))}
+.plus-menu{bottom:calc(72px + var(--sab))}
+@media (max-width:520px){
+  .logo-name{display:none}
+  .model-pill{padding:5px 10px}
+}
+.hbtn{width:44px;height:44px}
+.sb-x,.sh-close,.art-pclose{width:40px;height:40px}
+.ibtn{width:40px;height:40px}
+.send-btn{width:42px;height:42px}
+.mact{padding:9px 10px}
+
+/* ───────── 2. Tactile : actions toujours visibles, bouton ⋮ accessible ───────── */
+@media (hover:none){
+  .macts{opacity:1}
+  .ci-more{display:flex}
+}
+
+/* ───────── 3. Retour tactile (appui, ondulation) ───────── */
+.hbtn,.ibtn,.send-btn,.plus-btn,.wchip,.pm-item,.ci,.s-item,.sb-nav-item,.mdl-card,.mact,.cmd-item,.mbtn,.auth-submit,.art-abtn,.sb-new,.neutral-btn,.danger-btn,.lv-btn,.lv-chip{
+  transition:transform .14s var(--ease-out),background .16s,border-color .16s,color .16s,box-shadow .2s;
+  touch-action:manipulation;
+}
+.hbtn:active,.ibtn:active,.send-btn:active,.plus-btn:active,.wchip:active,.pm-item:active,.s-item:active,.sb-nav-item:active,.mdl-card:active,.mact:active,.mbtn:active,.auth-submit:active,.art-abtn:active,.sb-new:active{transform:scale(.95)}
+.rip-host{position:relative;overflow:hidden}
+.rip{position:absolute;border-radius:50%;pointer-events:none;background:currentColor;opacity:.2;transform:scale(0);animation:v7Ripple .55s var(--ease-out) forwards}
+@keyframes v7Ripple{to{transform:scale(1);opacity:0}}
+
+/* bouton d'envoi : s'anime quand il y a du texte */
+.send-btn.has-text{background:linear-gradient(135deg,var(--lum-violet),var(--lum-pink));color:#fff;box-shadow:0 4px 18px rgba(139,92,246,.45);transform:scale(1.04)}
+.send-btn.has-text:active{transform:scale(.94)}
+.send-btn.stop-mode{transform:none}
+
+/* ───────── 4. Logo vivant + effet miroir ───────── */
+.lum-logo{position:relative;width:var(--lw,132px);height:var(--lw,132px);margin:0 auto calc(var(--lw,132px) * .56);perspective:700px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.lum-aura{position:absolute;inset:-26%;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.55),rgba(232,121,249,.18) 45%,transparent 70%);filter:blur(10px);animation:lumBreathe 4.2s ease-in-out infinite;pointer-events:none}
+.lum-tilt{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(var(--ry,0deg)) rotateY(var(--rx,0deg));transition:transform .18s ease-out;animation:lumFloat 6s ease-in-out infinite}
+.lum-card{position:absolute;inset:0;border-radius:22%;overflow:hidden;box-shadow:0 10px 34px rgba(124,58,237,.55),0 0 0 1px rgba(196,160,255,.35)}
+.lum-card img,.lum-reflect img{width:100%;height:100%;display:block;object-fit:cover}
+.lum-shine{position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);transform:translateX(-120%);animation:lumShine 6.5s ease-in-out infinite;mix-blend-mode:overlay;pointer-events:none}
+.lum-glint{position:absolute;width:9%;height:9%;margin:-4.5% 0 0 -4.5%;border-radius:50%;background:radial-gradient(circle,#fff 0,rgba(255,220,255,.9) 25%,transparent 70%);mix-blend-mode:screen;opacity:0;animation:lumGlint 5s ease-in-out infinite;pointer-events:none}
+.lum-glint.g1{left:37%;top:29%}
+.lum-glint.g2{left:47%;top:29.5%;animation-delay:.4s}
+.lum-glint.g3{left:71%;top:62%;width:16%;height:16%;margin:-8% 0 0 -8%;animation-delay:2.2s;animation-duration:3.4s}
+/* reflet « miroir » : copie retournée, estompée */
+.lum-reflect{position:absolute;left:0;right:0;top:100%;height:46%;margin-top:6px;border-radius:22%;overflow:hidden;opacity:.55;transform:scaleY(-1);-webkit-mask-image:linear-gradient(to top,rgba(0,0,0,.6),transparent 85%);mask-image:linear-gradient(to top,rgba(0,0,0,.6),transparent 85%);filter:blur(.6px);animation:lumRipple 5s ease-in-out infinite;pointer-events:none}
+.lum-reflect img{position:absolute;left:0;bottom:0;width:100%;height:217%}
+.lum-sp{position:absolute;width:6px;height:6px;margin:-3px;background:#fff;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);opacity:0;animation:lumTwinkle 3.2s ease-in-out infinite;filter:drop-shadow(0 0 4px #c4b5fd);pointer-events:none}
+.lum-sp.s1{left:-6%;top:18%;animation-delay:.2s}
+.lum-sp.s2{left:104%;top:30%;animation-delay:1.1s;width:8px;height:8px}
+.lum-sp.s3{left:90%;top:92%;animation-delay:2s}
+.lum-sp.s4{left:4%;top:86%;animation-delay:2.7s;width:5px;height:5px}
+.lum-sp.s5{left:50%;top:-8%;animation-delay:1.6s;width:7px;height:7px}
+@keyframes lumBreathe{0%,100%{transform:scale(.92);opacity:.65}50%{transform:scale(1.08);opacity:1}}
+@keyframes lumFloat{0%,100%{translate:0 0}50%{translate:0 -6px}}
+@keyframes lumShine{0%,62%{transform:translateX(-120%)}82%,100%{transform:translateX(120%)}}
+@keyframes lumGlint{0%,70%,100%{opacity:0;transform:scale(.4)}78%{opacity:1;transform:scale(1.15)}86%{opacity:.2;transform:scale(.7)}}
+@keyframes lumTwinkle{0%,100%{opacity:0;transform:scale(.3) rotate(0)}50%{opacity:1;transform:scale(1) rotate(45deg)}}
+@keyframes lumRipple{0%,100%{transform:scaleY(-1) skewX(0deg)}50%{transform:scaleY(-1) skewX(1.4deg)}}
+.lum-logo.pop .lum-card{animation:lumPop .6s var(--ease-spring)}
+@keyframes lumPop{0%{transform:scale(1)}35%{transform:scale(1.14) rotate(-3deg)}100%{transform:scale(1)}}
+.lum-burst{position:absolute;width:7px;height:7px;margin:-3.5px;border-radius:50%;background:radial-gradient(circle,#fff,#c4b5fd 60%,transparent);pointer-events:none;animation:lumBurst .8s ease-out forwards;z-index:3}
+@keyframes lumBurst{from{transform:translate(0,0) scale(1);opacity:1}to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+body.ai-busy .lum-aura{animation-duration:1.4s}
+
+/* petites versions (avatar, en-tête, barre latérale) */
+.mini-logo{width:var(--s,28px);height:var(--s,28px);border-radius:24%;display:block;object-fit:cover;box-shadow:0 0 0 1px rgba(196,160,255,.3),0 2px 10px rgba(124,58,237,.35)}
+.aav{overflow:hidden;background:transparent;border:none}
+.aav .mini-logo{--s:100%;width:100%;height:100%;box-shadow:0 0 0 1px rgba(196,160,255,.35)}
+.aav.sp{animation:v7AvPulse 1.6s ease-in-out infinite}
+@keyframes v7AvPulse{0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,.55)}50%{box-shadow:0 0 0 7px rgba(139,92,246,0)}}
+.logo-w .mini-logo,.sb-logo .mini-logo{transition:transform .3s var(--ease-spring)}
+.logo-w:active .mini-logo,.sb-logo:active .mini-logo{transform:rotate(-8deg) scale(1.12)}
+.ai-thinking .think-ico{width:26px;height:26px;border-radius:24%;position:relative;flex-shrink:0}
+.ai-thinking .think-ico::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid transparent;border-top-color:var(--lum-violet);border-right-color:var(--lum-pink);animation:v7Spin 1s linear infinite}
+@keyframes v7Spin{to{transform:rotate(360deg)}}
+
+/* ───────── 5. Entrées animées ───────── */
+.welcome .wtitle,.welcome .wsub{animation:v7Rise .7s var(--ease-out) both}
+.welcome .wtitle{animation-delay:.12s}
+.welcome .wsub{animation-delay:.22s}
+.welcome .wchip{animation:v7Rise .6s var(--ease-out) both}
+.welcome .wchip:nth-child(1){animation-delay:.32s}
+.welcome .wchip:nth-child(2){animation-delay:.4s}
+.welcome .wchip:nth-child(3){animation-delay:.48s}
+.welcome .wchip:nth-child(4){animation-delay:.56s}
+@keyframes v7Rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.ubub{animation:v7Pop .34s var(--ease-spring)}
+@keyframes v7Pop{from{opacity:0;transform:translateY(8px) scale(.92)}to{opacity:1;transform:none}}
+.sidebar.open .ci{animation:v7SlideIn .38s var(--ease-out) both}
+.sidebar.open .ci:nth-child(1){animation-delay:.04s}.sidebar.open .ci:nth-child(2){animation-delay:.08s}.sidebar.open .ci:nth-child(3){animation-delay:.12s}
+.sidebar.open .ci:nth-child(4){animation-delay:.16s}.sidebar.open .ci:nth-child(5){animation-delay:.2s}.sidebar.open .ci:nth-child(n+6){animation-delay:.24s}
+@keyframes v7SlideIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+.pm-item{animation:v7Rise .35s var(--ease-out) both}
+.plus-menu.show .pm-item:nth-child(n){animation-delay:calc(var(--i,0) * 35ms)}
+.auth-box>*{animation:v7Rise .55s var(--ease-out) both}
+.auth-box>*:nth-child(2){animation-delay:.08s}.auth-box>*:nth-child(3){animation-delay:.14s}.auth-box>*:nth-child(4){animation-delay:.2s}.auth-box>*:nth-child(5){animation-delay:.26s}
+.auth-logo{flex-direction:column;gap:0}
+
+/* l'IA travaille : halo discret sur l'ambiance (uniquement pendant la génération) */
+body.ai-busy .amb{animation:v7Amb 2.4s ease-in-out infinite}
+@keyframes v7Amb{0%,100%{opacity:.4}50%{opacity:.85}}
+body.ai-busy .m-dot{animation-duration:.9s}
+
+/* bouton « retour en bas » */
+.fab-down{position:fixed;right:16px;bottom:calc(84px + var(--sab));width:44px;height:44px;border-radius:50%;border:1px solid var(--border-hover);background:var(--bg-secondary);color:var(--text);display:flex;align-items:center;justify-content:center;z-index:60;cursor:pointer;opacity:0;transform:translateY(12px) scale(.8);pointer-events:none;transition:opacity .2s,transform .25s var(--ease-spring);box-shadow:0 6px 22px rgba(0,0,0,.35)}
+.fab-down.show{opacity:1;transform:none;pointer-events:auto}
+.fab-down svg{width:20px;height:20px}
+
+/* ───────── 6. Thèmes (applyCfg pose body.t-light / body.t-amoled) ───────── */
+body.t-amoled{--bg:#000;--bg-elevated:#050505;--bg-secondary:#0a0a0a;--surface:#111;--surface-hover:#1b1b1b}
+body.t-light{
+  --bg:#faf8f5;--bg-elevated:#fff;--bg-secondary:#f3f0ec;--surface:#ece8e3;--surface-hover:#e2ddd7;
+  --border:rgba(0,0,0,.08);--border-hover:rgba(0,0,0,.16);--border-active:rgba(124,58,237,.35);
+  --text:#1b1a19;--text-secondary:#57534e;--text-tertiary:#7d7973;
+  --accent:#7c3aed;--accent-soft:rgba(124,58,237,.1);--accent-glow:rgba(124,58,237,.25);
+  --ok:#059669;--err:#dc2626;--warn:#b45309;
+}
+body.t-light .amb{display:none}
+body.t-light .atext pre,body.t-light .art-raw pre{color:#1b1a19}
+body.t-light .sidebar.open{box-shadow:0 0 60px rgba(0,0,0,.25)}
+body.t-light .header{background:rgba(255,255,255,.6)}
+body.t-light .send-btn{color:#fff}
+body.t-light .plus-menu,body.t-light .ctx,body.t-light .cmd-box,body.t-light .modal-box{box-shadow:0 18px 50px rgba(0,0,0,.18)}
+
+/* ───────── 7. Réglage « Animations » & mouvement réduit ───────── */
+body.no-anim *,body.no-anim *::before,body.no-anim *::after{animation:none!important;transition:none!important}
+body.lum-paused .lum-aura,body.lum-paused .lum-tilt,body.lum-paused .lum-shine,body.lum-paused .lum-glint,body.lum-paused .lum-sp,body.lum-paused .lum-reflect{animation-play-state:paused}
+@media (prefers-reduced-motion:reduce){.lum-aura,.lum-tilt,.lum-shine,.lum-glint,.lum-sp,.lum-reflect{animation:none!important}}
+
+/* ───────── 8. Lumina Live ───────── */
+.lv{position:fixed;inset:0;z-index:5000;background:#05030d;color:#fff;display:flex;flex-direction:column;opacity:0;visibility:hidden;transform:scale(1.04);transition:opacity .3s ease,transform .38s var(--ease-out),visibility 0s .38s;overflow:hidden;--lvl:0}
+.lv.open{opacity:1;visibility:visible;transform:none;transition:opacity .3s ease,transform .38s var(--ease-out)}
+.lv.closing{opacity:0;visibility:visible}
+.lv-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#05030d;transition:filter .4s,opacity .3s}
+.lv-video.mirror{transform:scaleX(-1)}
+.lv.flipping .lv-video{filter:blur(14px) brightness(.6)}
+.lv.vision-off .lv-video{filter:grayscale(1) brightness(.35)}
+.lv-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,3,13,.7) 0,rgba(5,3,13,0) 26%,rgba(5,3,13,0) 52%,rgba(5,3,13,.82) 100%);pointer-events:none}
+.lv-flash{position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,rgba(196,160,255,.45),transparent 65%);opacity:0;pointer-events:none}
+.lv-flash.on{animation:lvFlash .7s ease-out}
+@keyframes lvFlash{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
+.lv-top{position:relative;z-index:2;padding:calc(12px + var(--sat)) 16px 0;display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center}
+.lv-live{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.12em;background:rgba(220,38,38,.9);padding:5px 10px;border-radius:20px}
+.lv-dot{width:7px;height:7px;border-radius:50%;background:#fff;animation:lvBlink 1.4s ease-in-out infinite}
+@keyframes lvBlink{0%,100%{opacity:1}50%{opacity:.25}}
+.lv-status{font-size:14px;font-weight:600;text-shadow:0 1px 8px rgba(0,0,0,.6);flex:1;min-width:120px}
+.lv-chips{display:flex;gap:8px;flex-wrap:wrap;width:100%}
+.lv-chip{border:1px solid rgba(255,255,255,.22);background:rgba(20,12,40,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#fff;border-radius:20px;padding:7px 12px;font:600 12px var(--font-sans);cursor:pointer}
+.lv-chip.off{opacity:.6}
+.lv-stage{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;pointer-events:none}
+.lv-orb{position:relative;width:132px;height:132px;display:flex;align-items:center;justify-content:center}
+.lv-orb i{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(167,139,250,.65);transform:scale(calc(1 + var(--lvl) * var(--k)));opacity:calc(.9 - var(--lvl) * .35);transition:border-color .3s}
+.lv-orb .r1{--k:.35}.lv-orb .r2{--k:.7;border-color:rgba(232,121,249,.5)}.lv-orb .r3{--k:1.05;border-color:rgba(96,165,250,.4)}
+.lv-orb .core{position:relative;width:112px;height:112px;border-radius:50%;background:#150a2e url(/icons/icon-512.png) -47px -8px/280px 280px no-repeat;box-shadow:0 0 calc(24px + var(--lvl) * 60px) rgba(139,92,246,.8),inset 0 0 0 2px rgba(255,255,255,.2);transform:scale(calc(1 + var(--lvl) * .12));transition:box-shadow .2s}
+.lv[data-state="speaking"] .lv-orb i{border-color:rgba(52,211,153,.6)}
+.lv[data-state="speaking"] .core{box-shadow:0 0 calc(24px + var(--lvl) * 60px) rgba(52,211,153,.75),inset 0 0 0 2px rgba(255,255,255,.25)}
+.lv[data-state="thinking"] .lv-orb .r1{border-style:dashed;animation:v7Spin 3s linear infinite;border-color:rgba(251,191,36,.7)}
+.lv[data-state="thinking"] .lv-orb .r2{border-color:rgba(251,191,36,.35)}
+.lv.observing .core{animation:lvScan 1.1s ease-in-out infinite}
+@keyframes lvScan{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35) saturate(1.3)}}
+.lv-bars{display:flex;align-items:center;gap:5px;height:34px}
+.lv-bars i{width:5px;height:34px;border-radius:3px;background:linear-gradient(#c4b5fd,#8b5cf6);transform-origin:center;transform:scaleY(.15);opacity:.9}
+.lv[data-state="speaking"] .lv-bars i{background:linear-gradient(#6ee7b7,#10b981)}
+.lv-caps{position:relative;z-index:2;padding:0 20px 14px;text-align:center;display:flex;flex-direction:column;gap:8px;min-height:104px;justify-content:flex-end}
+.lv-cap{font-size:15px;line-height:1.45;opacity:0;transform:translateY(8px);text-shadow:0 1px 10px rgba(0,0,0,.85)}
+.lv-cap.show{animation:v7Rise .45s var(--ease-out) forwards}
+.lv-cap-user{color:#ddd6fe;font-size:14px}
+.lv-cap-ai{font-size:17px;font-weight:500}
+.lv-hint{font-size:12px;color:rgba(255,255,255,.65);transition:opacity .4s}
+.lv-hint.gone{opacity:0;height:0;overflow:hidden}
+.lv-ctrl{position:relative;z-index:5;display:flex;justify-content:center;gap:16px;padding:8px 16px calc(22px + var(--sab))}
+.lv-btn{width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(20,12,40,.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.lv-btn svg{width:24px;height:24px}
+.lv-btn:active{transform:scale(.9)}
+.lv-btn.off{background:rgba(255,255,255,.9);color:#1b1030}
+.lv-btn.lv-end{background:#dc2626;border-color:#dc2626}
+.lv-err{position:absolute;inset:0;z-index:4;background:rgba(5,3,13,.82);display:flex;align-items:center;justify-content:center;padding:28px}
+.lv-err[hidden]{display:none}
+.lv-err-box{max-width:320px;text-align:center;display:flex;flex-direction:column;gap:16px;font-size:15px;line-height:1.5}
+.lv-btn-main{border:none;border-radius:14px;padding:13px 20px;background:linear-gradient(135deg,var(--lum-violet),var(--lum-pink));color:#fff;font:700 14px var(--font-sans);cursor:pointer}
+.lv-btn-sec{border:1px solid var(--border-hover);border-radius:14px;padding:13px 20px;background:var(--surface);color:var(--text);font:600 14px var(--font-sans);cursor:pointer}
+.lv-consent{position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:22px;animation:fadeIn .25s}
+.lv-consent-box{background:var(--bg-secondary);color:var(--text);border:1px solid var(--border-hover);border-radius:22px;padding:22px;max-width:360px;font-size:14px;line-height:1.6;animation:v7Pop .35s var(--ease-spring)}
+.lv-consent-box p{margin-bottom:10px;color:var(--text-secondary)}
+.lv-consent-t{font:600 19px var(--font-serif);margin-bottom:10px;color:var(--text)}
+.lv-consent-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+@media (max-height:620px){.lv-orb{width:100px;height:100px}.lv-orb .core{width:84px;height:84px;background-size:210px 210px;background-position:-35px -6px}.lv-caps{min-height:80px}}
+@media (prefers-reduced-motion:reduce){.lv-bars i,.lv-orb i,.lv-orb .core{transition:none}.lv.observing .core,.lv-dot{animation:none}}
+
+.ai-thinking .think-ico .mini-logo{width:100%;height:100%;--s:100%}
+.ai-thinking .think-ico{display:inline-block}
+
+/* Zone de saisie : plus de place pour le texte sur petit écran (le bouton Lire reste dans chaque message) */
+.inp{min-width:0}
+.inp-acts{gap:2px}
+@media (max-width:430px){
+  #ttsBtn{display:none}
+  .input-wrap{gap:6px;padding-left:12px;padding-right:12px}
+  .ibtn{width:38px;height:38px}
+}
