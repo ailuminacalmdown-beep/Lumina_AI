@@ -174,6 +174,7 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
 .wsub{color:var(--text-secondary);font-size:15px;line-height:1.7;max-width:380px;}
 .wchips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:4px;}
 .wchip{background:var(--surface);border:1px solid var(--border);padding:10px 16px;border-radius:24px;font-size:13px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all var(--dur-fast) var(--ease-out);}
+.welcome-compact .wlgo,.welcome-compact .wsub,.welcome-compact .wchips{display:none;}
 .wchip:hover{background:var(--surface-hover);border-color:var(--border-hover);color:var(--text);transform:translateY(-1px);}
 .wchip:active{transform:scale(.97);}
 .wchip svg{width:15px;height:15px;flex-shrink:0;}
@@ -1071,8 +1072,10 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
 <input type="file" id="fileInp" accept="*/*" style="display:none">
 
 <script>
-const API = `/chat`;
-const AUTH_API = `/auth`;
+const WELCOME_EL=document.getElementById("welcome");
+const BASE = (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ? "https://lumina-ai-sjyp.onrender.com" : "";
+const API = `${BASE}/chat`;
+const AUTH_API = `${BASE}/auth`;
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
     navigator.serviceWorker.register("/sw.js").catch(e=>console.error("[SW]",e));
@@ -1153,10 +1156,10 @@ async function checkAuth(){
   if(!ST.token)return false;
   try{
     const r=await fetch(`${AUTH_API}/me`,{headers:authHeaders()});
-    if(!r.ok)throw new Error("session invalide");
+    if(r.status===401||r.status===403)throw new Error("session invalide");if(!r.ok)return true;
     const d=await r.json();applyAuthUser(d.user);return true;
   }catch(e){
-    ST.token=null;localStorage.removeItem("L5_tok");return false;
+    if(e&&e.message==="session invalide"){ST.token=null;localStorage.removeItem("L5_tok");return false;}return true;
   }
 }
 function forceReauth(){
@@ -1655,10 +1658,10 @@ function buildGraph(expr,params){
 function renderMsgs(){
   const ca=document.getElementById("chat");ca.innerHTML="";
   const msgs=ST.hist[ST.convs.cur]||[];
-  if(!msgs.length){ca.appendChild(document.getElementById("welcome")||mkW());updConvName();return;}
+  if(!msgs.length){ca.appendChild(WELCOME_EL||mkW());updConvName();updName();return;}
   msgs.forEach(m=>appendMsg(m));ca.scrollTop=ca.scrollHeight;updConvName();
 }
-function mkW(){return document.getElementById("welcome");}
+function mkW(){return WELCOME_EL;}
 function appendMsg(msg){
   const ca=document.getElementById("chat");
   if(msg.role==="user"){
@@ -1780,7 +1783,7 @@ async function streamResp(text,targetConv,reasoning,sources){
     return;
   }
   const ca=document.getElementById("chat");
-  const we=document.getElementById("welcome");if(we&&we.parentNode===ca)we.remove();
+  const we=WELCOME_EL;if(we&&we.parentNode===ca)we.remove();
   const g=document.createElement("div");g.className="msg-g";
   const row=document.createElement("div");row.className="msg-a";
   const av=mkAv(true);const body=document.createElement("div");body.className="abody";
@@ -1850,15 +1853,33 @@ async function streamResp(text,targetConv,reasoning,sources){
 }
 
 // ── TTS ──
+const NATIVE_TTS=(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech) ? window.Capacitor.Plugins.TextToSpeech : null;
+
 function stopTTS(){
   if(RT.ttsHackId){clearInterval(RT.ttsHackId);RT.ttsHackId=null;}
   if(RT.ttsWatchdog){clearTimeout(RT.ttsWatchdog);RT.ttsWatchdog=null;}
+  if(NATIVE_TTS){try{NATIVE_TTS.stop();}catch(e){}}
   if(window.speechSynthesis)window.speechSynthesis.cancel();
   RT.ttsQ=[];
   RT.ttsBusy=false;
   RT.speech=null;
   RT.ttsNext=null;
   document.getElementById("ttsBtn")?.classList.remove("tts-on");
+}
+
+function speakFullNative(text,onDone=null){
+  const clean=cleanTxt(text);
+  if(!clean){if(onDone)onDone();return;}
+  RT.ttsBusy=true;
+  const btn=document.getElementById("ttsBtn");
+  if(btn)btn.classList.add("tts-on");
+  NATIVE_TTS.speak({text:clean,lang:"fr-FR",rate:0.95,pitch:1.0,volume:1.0,category:"ambient"})
+    .catch(()=>{})
+    .finally(()=>{
+      RT.ttsBusy=false;
+      document.getElementById("ttsBtn")?.classList.remove("tts-on");
+      if(onDone)onDone();
+    });
 }
 
 function cleanTxt(t){
@@ -1878,6 +1899,7 @@ function cleanTxt(t){
 
 function speakFull(text,onDone=null){
   stopTTS();
+  if(NATIVE_TTS){speakFullNative(text,onDone);return;}
 
   if(!window.speechSynthesis){
     if(onDone)onDone();
@@ -2017,11 +2039,13 @@ document.getElementById("voiceBtn").onclick=()=>{
 };
 
 // ── BACKEND ──
-async function callAPI(msg,convId){
+async function callAPI(msg,convId,imageData=null){
   const mdl=MODELS.find(m=>m.id===ST.mdl)||MODELS[0];
   try{
-    const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify({message:msg,model:mdl.model,temperature:.75,conv_id:convId||ST.convs.cur,use_web:!!CFG.web})});
-    if(r.status===401){forceReauth();return{reply:"Ta session a expiré, reconnecte-toi.",reasoning:null,sources:[]};}
+    const body={message:msg,model:mdl.model,temperature:.75,conv_id:convId||ST.convs.cur,use_web:!!CFG.web};
+    if(imageData) body.image=imageData;
+    const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify(body)});
+    if(r.status===401){forceReauth();return{reply:"Le serveur a redémarré et ta session a été perdue. Reconnecte-toi, ta conversation reste ici.",reasoning:null,sources:[]};}
     if(r.status===429)return{reply:"Tu envoies des messages trop vite, patiente une minute.",reasoning:null,sources:[]};
     if(!r.ok)return{reply:"Erreur serveur ("+r.status+"). Vérifie que Flask tourne sur le port 5005.",reasoning:null,sources:[]};
     const d=await r.json();
@@ -2047,7 +2071,7 @@ async function sendMsg(override,retry=false){
   // erreur silencieuse suffisait à bloquer TOUS les envois suivants sans message visible.
   try{
     if(!retry){f.value="";autoRsz();}
-    const we=document.getElementById("welcome");if(we&&we.parentNode===ca)we.remove();
+    const we=WELCOME_EL;if(we&&we.parentNode===ca)we.remove();
     if(!retry){
       if(targetConv===ST.convs.cur){const uw=document.createElement("div");uw.className="msg-u";const ub=document.createElement("div");ub.className="ubub";ub.textContent=msg;uw.appendChild(ub);ca.appendChild(uw);ca.scrollTop=ca.scrollHeight;}
       if(!ST.hist[targetConv])ST.hist[targetConv]=[];
@@ -2082,7 +2106,7 @@ function qs(m){sendMsg(m);}
 // ── PLOT ──
 function tryPlot(msg){
   const ca=document.getElementById("chat");const m=msg.match(/^(?:y|f\(x\)|f)\s*=\s*(.+)/i);if(!m)return false;
-  const expr=m[1].trim();const we=document.getElementById("welcome");if(we&&we.parentNode===ca)we.remove();
+  const expr=m[1].trim();const we=WELCOME_EL;if(we&&we.parentNode===ca)we.remove();
   const params=graphParams(expr);const g=buildGraph(expr,params);ca.appendChild(wrapAi(g));ca.scrollTop=ca.scrollHeight;
   if(!ST.hist[ST.convs.cur])ST.hist[ST.convs.cur]=[];
   ST.hist[ST.convs.cur].push({role:"assistant",content:expr,type:"graph",expr,params});save();return true;
@@ -2090,7 +2114,7 @@ function tryPlot(msg){
 
 // ── IMAGE GEN ──
 async function genImg(prompt){
-  const ca=document.getElementById("chat");const we=document.getElementById("welcome");if(we&&we.parentNode===ca)we.remove();
+  const ca=document.getElementById("chat");const we=WELCOME_EL;if(we&&we.parentNode===ca)we.remove();
   const ph=document.createElement("div");ph.className="img-ph";
   ph.innerHTML=`<svg viewBox="0 0 100 100" fill="none"><line x1="50" y1="10" x2="50" y2="90" stroke="#8a5cf6" stroke-width="7" stroke-linecap="round"/><line x1="10" y1="50" x2="90" y2="50" stroke="#8a5cf6" stroke-width="7" stroke-linecap="round"/><line x1="22" y1="22" x2="78" y2="78" stroke="#8a5cf6" stroke-width="5.5" stroke-linecap="round"/><line x1="78" y1="22" x2="22" y2="78" stroke="#8a5cf6" stroke-width="5.5" stroke-linecap="round"/><circle cx="50" cy="50" r="11" stroke="#8a5cf6" stroke-width="3" fill="#080810"/><circle cx="50" cy="50" r="5.5" fill="#fff"/></svg><span>Génération...</span>`;
   const grp=wrapAi(ph);ca.appendChild(grp);ca.scrollTop=ca.scrollHeight;
@@ -2403,13 +2427,13 @@ async function captureAndAnalyze(){
   cv.getContext("2d").drawImage(vid,0,0);
   const dataUrl=cv.toDataURL("image/jpeg",.85);
   stopVision();
-  const ca=document.getElementById("chat");const we=document.getElementById("welcome");if(we&&we.parentNode===ca)we.remove();
+  const ca=document.getElementById("chat");const we=WELCOME_EL;if(we&&we.parentNode===ca)we.remove();
   const targetConv=ST.convs.cur;
   const uw=document.createElement("div");uw.className="msg-u";const ub=document.createElement("div");ub.className="ubub";ub.innerHTML=`<img src="${dataUrl}" style="max-width:170px;border-radius:9px;display:block;">`;uw.appendChild(ub);ca.appendChild(uw);ca.scrollTop=ca.scrollHeight;
   if(!ST.hist[targetConv])ST.hist[targetConv]=[];ST.hist[targetConv].push({role:"user",content:dataUrl,type:"img"});save();
   RT.streamingConvs.add(targetConv);
   try{
-    const rep=await callAPI("Analyse cette image en détail. Décris ce que tu vois, les couleurs, les éléments, le contexte. Réponds en français.",targetConv);
+    const rep=await callAPI("Analyse cette image en détail. Décris ce que tu vois, les couleurs, les éléments, le contexte. Réponds en français.",targetConv,ev.target.result);
     if(!RT.stopReqConvs.has(targetConv))await streamResp(rep.reply,targetConv,rep.reasoning,rep.sources);
   }finally{fin(targetConv);}
 }
@@ -2456,13 +2480,13 @@ document.getElementById("pmMusic").onclick=()=>{setInp("Génère une musique ");
 document.getElementById("imgInp").onchange=async e=>{
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();reader.onload=async ev=>{
-    const ca=document.getElementById("chat");const we=document.getElementById("welcome");if(we&&we.parentNode===ca)we.remove();
+    const ca=document.getElementById("chat");const we=WELCOME_EL;if(we&&we.parentNode===ca)we.remove();
     const targetConv=ST.convs.cur;
     const uw=document.createElement("div");uw.className="msg-u";const ub=document.createElement("div");ub.className="ubub";ub.innerHTML=`<img src="${ev.target.result}" style="max-width:170px;border-radius:9px;display:block;">`;uw.appendChild(ub);ca.appendChild(uw);ca.scrollTop=ca.scrollHeight;
     if(!ST.hist[targetConv])ST.hist[targetConv]=[];ST.hist[targetConv].push({role:"user",content:ev.target.result,type:"img"});save();
     RT.streamingConvs.add(targetConv);
     try{
-      const rep=await callAPI("Analyse cette image en détail. Décris ce que tu vois, les couleurs, les éléments, le contexte. Réponds en français.",targetConv);
+      const rep=await callAPI("Analyse cette image en détail. Décris ce que tu vois, les couleurs, les éléments, le contexte. Réponds en français.",targetConv,ev.target.result);
       if(!RT.stopReqConvs.has(targetConv))await streamResp(rep.reply,targetConv,rep.reasoning,rep.sources);
     }finally{fin(targetConv);}
   };reader.readAsDataURL(file);e.target.value="";
@@ -2488,8 +2512,34 @@ window.addEventListener("offline",()=>document.getElementById("offlineB").style.
 window.addEventListener("online",()=>{document.getElementById("offlineB").style.display="none";if(RT.offlineQ){const m=RT.offlineQ;RT.offlineQ=null;sendMsg(m);}});
 
 // ── WELCOME ──
+const GREETINGS={
+  earlyMorning:["T'es d'humeur matinale aujourd'hui, on fait quoi ?","Debout tôt ! Qu'est-ce qu'on prépare ce matin ?","Le jour se lève à peine, et toi déjà prêt·e. On s'attaque à quoi ?","Bonjour lève-tôt, par quoi on commence ?","Café pas encore fini ? On peut quand même commencer, dis-moi tout."],
+  morning:["Bonjour ! On fait quoi de beau ce matin ?","Prêt·e à attaquer la journée ? Dis-moi ce qu'il te faut.","Matinée productive en vue ? Je t'écoute.","Salut ! Qu'est-ce qui t'amène ce matin ?","On démarre la journée sur quoi ?"],
+  noon:["C'est l'heure de midi, une petite pause pour discuter ?","Salut ! Petite question entre deux bouchées ?","Midi pile, qu'est-ce que je peux faire pour toi ?","Pause déjeuner studieuse ? Dis-moi tout.","On profite de la pause de midi pour avancer sur quoi ?"],
+  afternoon:["Bon après-midi ! Sur quoi je peux t'aider ?","L'après-midi avance, et toi, tu avances sur quoi ?","Salut ! Un petit coup de main pour cet après-midi ?","Encore quelques heures productives, on fait quoi ?","Après-midi tranquille ou speed ? Dis-moi ce qu'il te faut."],
+  evening:["Bonsoir ! On termine la journée sur quoi ?","Salut ! Une idée pour ce soir ?","La soirée commence, qu'est-ce que je peux faire pour toi ?","Bonsoir, dis-moi ce qui te trotte dans la tête.","On fait quoi ce soir ?"],
+  night:["Salut couche-tard, on fait quoi ce soir ?","Il se fait tard, mais je suis là. Dis-moi tout.","Nuit tombée, esprit encore actif ? On s'y met.","Encore debout ? Qu'est-ce qui t'occupe ce soir ?","Bonsoir noctambule, par quoi on commence ?"],
+  lateNight:["Salut, drôle d'heure pour discuter, mais je suis là. On fait quoi ?","Nuit blanche ou insomnie ? Dis-moi ce qu'il te faut.","Il est tard, très tard. Qu'est-ce qui t'amène ?","L'heure où tout le monde dort, sauf nous deux. On fait quoi ?","Salut noctambule extrême, je t'écoute."]
+};
+function getTimeGreeting(){
+  const h=new Date().getHours();
+  let bucket;
+  if(h>=5&&h<8)bucket=GREETINGS.earlyMorning;
+  else if(h>=8&&h<12)bucket=GREETINGS.morning;
+  else if(h>=12&&h<14)bucket=GREETINGS.noon;
+  else if(h>=14&&h<18)bucket=GREETINGS.afternoon;
+  else if(h>=18&&h<22)bucket=GREETINGS.evening;
+  else if(h>=22)bucket=GREETINGS.night;
+  else bucket=GREETINGS.lateNight;
+  const pick=bucket[Math.floor(Math.random()*bucket.length)];
+  return (ST.user&&ST.user!=="vous")?`${pick}`:pick;
+}
 function updName(){
-  const t=document.getElementById("wtitle");if(t&&ST.user&&ST.user!=="vous")t.innerHTML=`Bonjour ${ST.user},<br>je suis Lumina`;
+  const w=WELCOME_EL;
+  const seen=localStorage.getItem("L5_seenWelcome");
+  if(seen){if(w)w.classList.add("welcome-compact");}
+  else{if(w)w.classList.remove("welcome-compact");localStorage.setItem("L5_seenWelcome","1");}
+  const t=document.getElementById("wtitle");if(t)t.innerHTML=getTimeGreeting();
   document.getElementById("sbUname").textContent=ST.user||"Utilisateur";
   const sn=document.getElementById("sName");if(sn)sn.textContent=ST.user||"Utilisateur";
   const ss=document.getElementById("sSub");if(ss)ss.textContent=ST.email||"Lumina AI · Local";
@@ -2498,8 +2548,7 @@ function updName(){
 // ── DÉMARRAGE DE L'APP (appelé une fois la session confirmée) ──
 function startApp(){
   applyCfg();
-  if(!ST.convs.list.length)newConv();
-  else{if(!ST.convs.cur)ST.convs.cur=ST.convs.list[0].id;renderConvList();renderMsgs();}
+  newConv();
   const msgs=ST.hist[ST.convs.cur]||[];
   if(!msgs.length){
     setTimeout(async()=>{

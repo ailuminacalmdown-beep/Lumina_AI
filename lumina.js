@@ -1,7 +1,8 @@
 // ============================================================
 // LUMINA — CORE
 // ============================================================
-const API = `/chat`;
+const BASE = (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ? "https://lumina-ai-sjyp.onrender.com" : "";
+const API = `${BASE}/chat`;
 const JAMENDO = "127d581d";
 
 const MODELS = [

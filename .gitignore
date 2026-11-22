@@ -25,3 +25,4 @@ icon-512.png
 *.bak
 *.old
 index.html-*
+node_modules/
