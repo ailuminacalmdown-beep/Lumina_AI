@@ -3,4 +3,5 @@ flask-cors>=4.0
 requests>=2.31
 gunicorn>=21.0
 
-psycopg>=3.2
+psycopg[binary]>=3.2,<4
+pypdf>=5,<6
