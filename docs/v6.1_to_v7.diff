@@ -1,0 +1,2215 @@
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/.dockerignore v7/.dockerignore
+--- v6.1/.dockerignore	2026-08-26 22:02:38.000000000 +0000
++++ v7/.dockerignore	2026-10-21 22:11:56.762512213 +0000
+@@ -1,24 +1,21 @@
++.git
++.github
+ .env
+ .env.*
+-.git
+-.gitignore
+-
+ *.db
+-*.db-journal
+-*.db-wal
+-*.db-shm
+-memoire_lumina.json
+-
++*.db-*
+ *.backup*
+ *.bak
+-*.old
+ *.zip
+-
+-__pycache__/
+-*.pyc
+-.venv/
+-venv/
+-*.egg-info/
+-
+-index.html-*
+-lumina_server.py2
++*.7z
++android
++node_modules
++package.json
++package-lock.json
++capacitor.config.json
++tests
++scripts
++docs
++*.md
++__pycache__
++requirements-*.txt
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/.env.example v7/.env.example
+--- v6.1/.env.example	1970-01-01 00:00:00.000000000 +0000
++++ v7/.env.example	2026-10-21 22:11:56.764613730 +0000
+@@ -0,0 +1,29 @@
++# Copier en .env pour le développement local (jamais committer le vrai .env).
++# Toutes les valeurs ci-dessous sont FACTICES.
++
++# Clés Groq, séparées par des virgules (rotation automatique si l'une est à quota)
++GROQ_API_KEYS=gsk_exemple_cle_1,gsk_exemple_cle_2
++
++# PostgreSQL (Neon). Laisser vide en local : le serveur utilise alors SQLite (lumina.db).
++# Utiliser la chaîne « pooled » de Neon, avec sslmode=require.
++DATABASE_URL=postgresql://utilisateur:motdepasse@ep-exemple-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require
++
++# Origines autorisées (CORS). "*" en dev. En production, restreindre ET inclure l'APK Capacitor :
++CORS_ORIGINS=https://lumina-ai-sjyp.onrender.com,https://localhost,capacitor://localhost
++
++# Derrière Render : 1 proxy. En local sans proxy : 0.
++TRUST_PROXY_HOPS=1
++
++# Jeton pour /status détaillé et /groq_models (en-tête X-Admin-Token). Laisser vide = désactivé.
++ADMIN_TOKEN=remplacer-par-une-longue-valeur-aleatoire
++
++# Réglages facultatifs (valeurs par défaut indiquées)
++SESSION_TTL_DAYS=30
++GROQ_TOTAL_TIMEOUT=45
++MAX_MESSAGE_CHARS=8000
++LIVE_MAX_PER_MIN=40
++SIGNUP_MAX_PER_HOUR=10
++GROQ_VISION_MODELS=
++GROQ_STT_MODEL=whisper-large-v3-turbo
++SQLITE_PATH=
++PORT=5005
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/.gitignore v7/.gitignore
+--- v6.1/.gitignore	2026-08-11 19:08:23.000000000 +0000
++++ v7/.gitignore	2026-10-21 22:11:56.763670935 +0000
+@@ -1,27 +1,43 @@
+-# Secrets — ne JAMAIS committer
++# Secrets : ne JAMAIS committer
+ .env
+ .env.*
++!.env.example
+ 
+-# Base de données locale (comptes utilisateurs, mots de passe hachés, mémoire)
++# Bases de données et sauvegardes (comptes, hashes de mots de passe, mémoire)
+ *.db
+ *.db-journal
+ *.db-wal
+ *.db-shm
++*.db.backup*
++*.backup*
++*.sqlite*
+ memoire_lumina.json
+ 
++# Archives d'export
++*.zip
++*.7z
++
+ # Python
+ __pycache__/
+ *.pyc
+ .venv/
+ venv/
+-*.egg-info/
+ 
+-# Système
+-.DS_Store
++# Node / Android (les ressources web de l'APK sont régénérées par `npx cap sync`)
++node_modules/
++android/.gradle/
++android/build/
++android/app/build/
++android/app/src/main/assets/public
++android/app/src/main/assets/capacitor.config.json
++android/app/src/main/assets/capacitor.plugins.json
++android/local.properties
++*.apk
++*.aab
++*.jks
++*.keystore
+ 
+-# Lumina local files
+-icon-192.png
+-icon-512.png
++# Divers
++.DS_Store
+ *.bak
+ *.old
+-index.html-*
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/DEPLOY.md v7/DEPLOY.md
+--- v6.1/DEPLOY.md	2026-08-11 19:04:36.000000000 +0000
++++ v7/DEPLOY.md	2026-10-23 01:29:10.830802196 +0000
+@@ -1,58 +1,87 @@
+-# Déployer Lumina
++# Déployer Lumina v7 (Render + Neon + Android)
+ 
+-## 1. Variables d'environnement
++> Cette procédure **n'a pas été exécutée** pendant le développement (pas d'accès à Render, Neon, Docker ni au SDK
++> Android). Les points marqués ⚠ sont à vérifier chez toi à la première mise en ligne.
++> Ne déploie rien tant que les « Contrôles avant mise en production » (fin de ce fichier) ne sont pas cochés.
++
++## 1. Variables d'environnement (Render → Environment)
++
++| Variable | Obligatoire | Rôle |
++|---|---|---|
++| `GROQ_API_KEYS` | oui | Une ou plusieurs clés Groq séparées par des virgules (rotation automatique). **Jamais dans le code.** |
++| `DATABASE_URL` | oui (prod) | Chaîne **pooled** Neon (hôte `…-pooler…`) avec `?sslmode=require`. Absente = SQLite éphémère (perdue à chaque redéploiement). |
++| `CORS_ORIGINS` | recommandé | `https://lumina-ai-sjyp.onrender.com,https://localhost,capacitor://localhost` — **`https://localhost` est l'origine de l'APK** ; sans lui l'appli Android serait bloquée. Défaut `*`. |
++| `TRUST_PROXY_HOPS` | oui sur Render | `1` (un proxy Render devant l'appli) : nécessaire pour que les limites par IP voient la vraie IP. |
++| `ADMIN_TOKEN` | facultatif | Long jeton aléatoire. Donne accès à `/status` détaillé et `/groq_models` via l'en-tête `X-Admin-Token`. Vide = désactivé. |
++| `SESSION_TTL_DAYS` | non | Durée d'une session (défaut 30). |
++| `GROQ_TOTAL_TIMEOUT` | non | Délai global de la cascade de modèles, en secondes (défaut 45). |
++| `GROQ_VISION_MODELS` | non | Modèles compatibles image, séparés par des virgules (défaut : le modèle « Prime »). ⚠ À vérifier : voir §5. |
++| `GROQ_STT_MODEL` | non | Modèle de transcription du mode Live (défaut `whisper-large-v3-turbo`). ⚠ À vérifier. |
++| `MAX_MESSAGE_CHARS`, `LIVE_MAX_PER_MIN`, `SIGNUP_MAX_PER_HOUR`, `DB_CONNECT_TIMEOUT` | non | Plafonds de coût / abus (défauts dans `.env.example`). |
++
++`.env.example` ne contient que des noms et des valeurs factices.
++
++## 2. Render
++
++1. Service existant **Lumina_AI** (Docker). Le `Dockerfile` v7 :
++   - n'embarque que `lumina_server.py`, `migrate_sqlite_to_neon.py` et `www/` (voir `.dockerignore`) ;
++   - tourne en utilisateur non-root, **1 worker gunicorn + 8 threads** (cache, limites de débit et verrous sont en mémoire ;
++     un seul worker les garde cohérents) ;
++   - installe `psycopg[binary]` : aucune bibliothèque système à ajouter.
++2. **Health Check Path** : `/healthz` (répond 200 si la base répond, 503 sinon ; ne révèle aucune configuration).
++3. Renseigner les variables du §1, puis déployer **depuis une branche de test d'abord** si possible.
++4. ⚠ Premier démarrage : lire les logs. Attendus : aucune ligne `[DB] initialisation impossible`. Si elle apparaît,
++   le serveur reste en ligne et réessaie à la requête suivante (réponses 503 « Base de données indisponible » en attendant).
++5. Le plan gratuit met le service en veille : le premier appel est lent (démarrage à froid), c'est normal.
++
++## 3. Neon
++
++- **Production** : projet `Lumina`, branche `production`, base `neondb` (inchangé). La migration v7 est **additive**
++  (voir `docs/MIGRATION.md`) : une table `feedback` et deux index, créés au démarrage (`CREATE … IF NOT EXISTS`).
++  Aucune donnée existante n'est lue ni modifiée.
++- **Avant le premier déploiement v7** : crée une **branche Neon de sauvegarde** (copie instantanée de `production`).
++- **Tests PostgreSQL** : crée une branche dédiée `test` (jamais `production`) puis :
++  `TEST_DATABASE_URL='…' CONFIRM_TEST_DB=yes python scripts/pg_smoke.py` (refuse de tourner sinon).
++- Neon met la base en veille : la première connexion après inactivité peut prendre quelques secondes
++  (`DB_CONNECT_TIMEOUT=10` par défaut ; monte à 20 si tu vois des 503 au réveil).
+ 
+-Obligatoire :
+-```
+-GROQ_API_KEY_1=ta_cle_groq
+-```
+-Optionnelles :
+-```
+-GROQ_API_KEY_2=...          # clé de secours (rotation automatique si la 1ère est à quota)
+-GROQ_API_KEY_3=...
+-CORS_ORIGINS=https://ton-domaine.com   # défaut "*" — à restreindre une fois le domaine connu
+-```
+-
+-Ne mets jamais ces valeurs dans le code. Le serveur refuse de démarrer utilement sans elles (il tourne, mais `/chat` renverra toujours le message de repli).
++## 4. Android (Capacitor)
+ 
+-## 2. Lancer en local (développement)
++Prérequis : Node ≥ 22, JDK 21, SDK Android (compileSdk 36). Le `webDir` est `www/` (source unique du frontend).
+ 
+ ```bash
+-pip install -r requirements.txt
+-export GROQ_API_KEY_1="ta_cle_groq"
+-python lumina_server.py
+-```
+-Ouvre `http://localhost:5005`.
+-
+-## 3. Lancer en production
++npm ci                      # dépendances Capacitor (package-lock.json fourni)
++npx cap sync android        # copie www/ dans android/app/src/main/assets/public (dossier ignoré par Git)
++cd android && ./gradlew assembleDebug
++```
++
++- **Termux** : copie `android/gradle.properties.termux.example` dans `~/.gradle/gradle.properties` (le chemin Termux
++  n'est plus dans le dépôt : il bloquait toute compilation hors de ton téléphone).
++- **Permissions** (ajoutées au manifeste) : `CAMERA`, `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS` — requises par le mode Live.
++  `allowBackup` est désormais `false` (le jeton de session n'est plus sauvegardé dans le cloud Android).
++- **URL de l'API dans l'APK** : `www/index.html` (`const BASE = …`) pointe vers `https://lumina-ai-sjyp.onrender.com`.
++  Si l'URL du service change, modifier cette ligne puis refaire `npx cap sync`.
++- **Icônes** : lanceur adaptatif, rond et écran de démarrage générés depuis l'illustration fournie
++  (`android/app/src/main/res/mipmap-*`, `drawable*/splash.png`).
++- ⚠ **Non compilé ici.** À tester sur appareil : demande de permission caméra/micro, caméra arrière, synthèse vocale native,
++  rendu sous la barre d'état (marges `--safe-area-inset-top`).
+ 
+-Ne jamais utiliser `python lumina_server.py` en production : c'est un serveur de développement Flask, pas fait pour tenir une vraie charge. Utilise gunicorn (déjà dans `requirements.txt`) :
++## 5. À vérifier chez toi après déploiement (avec `ADMIN_TOKEN`)
+ 
+ ```bash
+-gunicorn lumina_server:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+-```
+-
+-Un `Procfile` et un `Dockerfile` sont fournis et font déjà ça — la plupart des plateformes les détectent automatiquement.
+-
+-## 4. Où héberger
+-
+-Le vrai piège pour cette appli précisément : `lumina.db` (comptes, mots de passe hachés, mémoire) est un **fichier local**. Beaucoup d'offres gratuites (Render free, Railway sans volume, la plupart des plateformes "serverless") ont un **disque éphémère** : le fichier est effacé à chaque redémarrage ou redéploiement. Sur ce genre d'offre, tes utilisateurs perdraient leur compte du jour au lendemain sans prévenir.
+-
+-Deux options honnêtes :
+-- **Un petit serveur avec disque persistant** (Fly.io avec un volume, ou une offre équivalente) — quelques dollars/mois, `lumina.db` survit aux redéploiements. Le Dockerfile fourni fonctionne tel quel.
+-- **PythonAnywhere** (plan payant, pas le gratuit — le gratuit restreint les appels sortants, ce qui bloquerait les appels à Groq) — stockage persistant par défaut, plus simple si tu préfères éviter Docker.
+-
+-Si un jour tu dois répartir la charge sur plusieurs serveurs, `lumina.db` (un fichier local) ne suffira plus — il faudra migrer vers une vraie base hébergée (Postgres). Pas la peine d'y penser avant d'en avoir vraiment besoin.
+-
+-## 5. HTTPS — non négociable
+-
+-L'app envoie maintenant des mots de passe (à l'inscription/connexion). Servir ça en `http://` pur les expose en clair sur le réseau. Toutes les plateformes citées ci-dessus fournissent HTTPS automatiquement (certificat géré pour toi) — assure-toi juste que l'app finale est bien accédée en `https://`, jamais en `http://` direct vers le port 5005.
+-
+-## 6. Checklist avant mise en ligne
+-
+-- [ ] `GROQ_API_KEY_1` définie en variable d'environnement sur la plateforme (jamais dans le code)
+-- [ ] Ancienne clé Groq (celle qui a fuité) révoquée sur le dashboard Groq
+-- [ ] Hébergeur avec disque persistant confirmé (pas de surprise de perte de données)
+-- [ ] Accès uniquement en HTTPS
+-- [ ] `CORS_ORIGINS` restreint à ton domaine une fois connu
+-- [ ] `.gitignore` en place avant le premier `git push` (fourni — vérifie qu'il est bien pris en compte)
++curl -s -H "X-Admin-Token: $ADMIN_TOKEN" https://lumina-ai-sjyp.onrender.com/status        # version 7.0, base « postgresql »
++curl -s -H "X-Admin-Token: $ADMIN_TOKEN" https://lumina-ai-sjyp.onrender.com/groq_models    # le modèle vision et whisper existent-ils ?
++curl -s -o /dev/null -w "%{http_code}\n" https://lumina-ai-sjyp.onrender.com/lumina_server.py   # attendu : 404
++```
++
++## 6. Contrôles avant mise en production
++
++- [ ] `scripts/run_tests.sh` : tout passe.
++- [ ] `scripts/pg_smoke.py` passe sur une **branche Neon de test**.
++- [ ] Branche Neon de sauvegarde créée.
++- [ ] Logs Render sans erreur au démarrage ; `/healthz` = 200 ; fichiers internes = 404.
++- [ ] Inscription, connexion, message, redémarrage du service puis rechargement : la conversation et le compte persistent.
++- [ ] `/groq_models` confirme le modèle vision et le modèle de transcription ; ajuster `GROQ_VISION_MODELS` / `GROQ_STT_MODEL` sinon.
++- [ ] APK : test sur un vrai téléphone (caméra avant/arrière, micro, permissions, en-tête sous la barre d'état).
++- [ ] Mode Live testé **avec voix réelle** (casque et haut-parleur) : coût Groq par session mesuré.
++- [ ] Pages légales relues par une personne compétente (voir `docs/RAPPORT_V7.md`, « Limitations »).
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/Dockerfile v7/Dockerfile
+--- v6.1/Dockerfile	2026-08-10 02:21:02.000000000 +0000
++++ v7/Dockerfile	2026-10-21 22:11:56.761004313 +0000
+@@ -1,15 +1,26 @@
+ FROM python:3.12-slim
+ 
++ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
++
+ WORKDIR /app
+ 
+ COPY requirements.txt .
+ RUN pip install --no-cache-dir -r requirements.txt
+ 
+-COPY . .
++# Seuls le serveur, le script de migration et le frontend (www/) entrent dans l'image
++# (voir .dockerignore). Le serveur ne sert que www/.
++COPY lumina_server.py migrate_sqlite_to_neon.py ./
++COPY www ./www
++
++RUN useradd --system --create-home lumina && chown -R lumina /app
++USER lumina
+ 
+ EXPOSE 5005
+ 
+-# --timeout 120 : un chat peut passer par plusieurs modèles/clés Groq en cascade
+-# avant de répondre si les premiers échouent (voir call_groq) ; large marge pour
+-# ne pas couper une requête légitime en plein milieu.
+-CMD ["gunicorn", "lumina_server:app", "--bind", "0.0.0.0:5005", "--workers", "2", "--threads", "4", "--timeout", "120"]
++HEALTHCHECK --interval=60s --timeout=5s --start-period=40s \
++  CMD python -c "import os,urllib.request as u;u.urlopen('http://127.0.0.1:'+os.environ.get('PORT','5005')+'/healthz',timeout=4)" || exit 1
++
++# 1 worker + 8 threads : cache, limites de débit et verrous sont en mémoire (par processus) ;
++# un seul worker les garde cohérents. L'appli est surtout en attente réseau (Groq) : les threads suffisent.
++# --timeout 120 : au-dessus du délai global de la cascade Groq (GROQ_TOTAL_TIMEOUT, 45 s par défaut).
++CMD ["sh", "-c", "exec gunicorn lumina_server:app --bind 0.0.0.0:${PORT:-5005} --workers 1 --threads 8 --timeout 120"]
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/Procfile v7/Procfile
+--- v6.1/Procfile	2026-08-10 02:21:02.000000000 +0000
++++ v7/Procfile	2026-10-21 22:11:56.761004313 +0000
+@@ -1 +1 @@
+-web: gunicorn lumina_server:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
++web: gunicorn lumina_server:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 120
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/README.md v7/README.md
+--- v6.1/README.md	2026-08-10 02:54:09.000000000 +0000
++++ v7/README.md	2026-10-23 01:29:19.043588180 +0000
+@@ -6,3 +6,33 @@
+ sdk: docker
+ app_port: 5005
+ ---
++# Lumina v7
++
++Assistant IA multimodal : chat, vision en direct (caméra avant/arrière + voix), images, musique, graphiques.
++Backend Flask + Groq, base PostgreSQL (Neon) ou SQLite, frontend PWA unique (`www/`), application Android (Capacitor).
++
++> **Statut : candidate au déploiement, pas prête pour la production.** Voir `docs/RAPPORT_V7.md` (tests réalisés,
++> tests non réalisés, limitations) et `DEPLOY.md` (contrôles obligatoires).
++
++## Démarrer en local
++```bash
++cp .env.example .env        # puis y mettre tes propres clés (jamais committées)
++sh scripts/run_local.sh     # http://localhost:5005 — SQLite local, la base de production n'est jamais utilisée par défaut
++```
++
++## Tester
++```bash
++sh scripts/run_tests.sh     # backend (29), démarrage du frontend, navigateur (13, si Playwright est installé)
++```
++
++## Arborescence
++```
++lumina_server.py            serveur (API, auth, Live, base de données)
++www/                        frontend servi tel quel (et copié dans l'APK) : index.html, v7.css, ui7.js, live.js, sw.js, icons/
++android/                    projet Capacitor (permissions caméra/micro, icônes Lumina)
++migrate_sqlite_to_neon.py   migration historique SQLite → Neon (inchangée, ne pas relancer sans raison)
++tests/                      backend (unittest), boot du frontend (Node), navigateur (Playwright)
++scripts/                    run_local.sh, run_tests.sh, compare_with_v6.sh, pg_smoke.py
++docs/                       RAPPORT_V7.md, MIGRATION.md, ROLLBACK.md, v6.1_to_v7.diff
++```
++Créé par Issa Amakendé Abdoulaye Koné.
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/android/app/src/main/AndroidManifest.xml v7/android/app/src/main/AndroidManifest.xml
+--- v6.1/android/app/src/main/AndroidManifest.xml	2026-09-11 15:01:28.000000000 +0000
++++ v7/android/app/src/main/AndroidManifest.xml	2026-10-21 22:11:56.783929179 +0000
+@@ -2,7 +2,7 @@
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ 
+     <application
+-        android:allowBackup="true"
++        android:allowBackup="false"
+         android:icon="@mipmap/ic_launcher"
+         android:label="@string/app_name"
+         android:roundIcon="@mipmap/ic_launcher_round"
+@@ -38,4 +38,12 @@
+     <!-- Permissions -->
+ 
+     <uses-permission android:name="android.permission.INTERNET" />
++    <!-- Mode Live : caméra (avant/arrière) et micro, demandés à l'exécution par la WebView Capacitor -->
++    <uses-permission android:name="android.permission.CAMERA" />
++    <uses-permission android:name="android.permission.RECORD_AUDIO" />
++    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
++
++    <uses-feature android:name="android.hardware.camera" android:required="false" />
++    <uses-feature android:name="android.hardware.camera.front" android:required="false" />
++    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+ </manifest>
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/android/app/src/main/res/values/ic_launcher_background.xml v7/android/app/src/main/res/values/ic_launcher_background.xml
+--- v6.1/android/app/src/main/res/values/ic_launcher_background.xml	2026-09-11 15:01:28.000000000 +0000
++++ v7/android/app/src/main/res/values/ic_launcher_background.xml	2026-10-20 19:21:29.036899072 +0000
+@@ -1,4 +1,4 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+-    <color name="ic_launcher_background">#FFFFFF</color>
+-</resources>
+\ No newline at end of file
++    <color name="ic_launcher_background">#0B0320</color>
++</resources>
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/android/gradle.properties v7/android/gradle.properties
+--- v6.1/android/gradle.properties	2026-09-24 10:38:32.000000000 +0000
++++ v7/android/gradle.properties	2026-10-21 22:11:56.784502524 +0000
+@@ -20,4 +20,3 @@
+ # Android operating system, and which are packaged with your app's APK
+ # https://developer.android.com/topic/libraries/support-library/androidx-rn
+ android.useAndroidX=true
+-android.aapt2FromMavenOverride=/data/data/com.termux/files/usr/bin/aapt2
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/android/gradle.properties.termux.example v7/android/gradle.properties.termux.example
+--- v6.1/android/gradle.properties.termux.example	1970-01-01 00:00:00.000000000 +0000
++++ v7/android/gradle.properties.termux.example	2026-10-21 22:11:56.784666133 +0000
+@@ -0,0 +1,3 @@
++# Spécifique à Termux : à copier dans ~/.gradle/gradle.properties (PAS dans le dépôt).
++# Sur GitHub Actions / un PC, ne mettez rien : Gradle télécharge son propre aapt2.
++android.aapt2FromMavenOverride=/data/data/com.termux/files/usr/bin/aapt2
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/capacitor.config.json v7/capacitor.config.json
+--- v6.1/capacitor.config.json	2026-09-23 23:10:40.000000000 +0000
++++ v7/capacitor.config.json	2026-10-21 22:11:56.785072354 +0000
+@@ -1,5 +1,8 @@
+ {
+   "appId": "com.lumina.ai",
+   "appName": "Lumina",
+-  "webDir": "www"
++  "webDir": "www",
++  "server": {
++    "androidScheme": "https"
++  }
+ }
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/lumina_server.py v7/lumina_server.py
+--- v6.1/lumina_server.py	2026-09-26 03:40:28.000000000 +0000
++++ v7/lumina_server.py	2026-10-20 19:24:31.725079210 +0000
+@@ -1,6 +1,6 @@
+ #!/usr/bin/env python3
+ """
+-Lumina Server v6.1 — Interface Claude-style
++Lumina Server v7.0
+ Développé par Issa Amakendé Abdoulaye Koné
+ 
+ Améliorations v6.1 :
+@@ -29,6 +29,8 @@
+ import re
+ 
+ from collections import OrderedDict
++from werkzeug.middleware.proxy_fix import ProxyFix
++import hmac
+ DATABASE_URL = os.environ.get("DATABASE_URL")
+ 
+ # ══════════════════════════════════════════════════════════════════════════════
+@@ -48,6 +50,32 @@
+ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+ GROQ_MODELS_URL = "https://api.groq.com/openai/v1/models"
+ 
++# ══════════════════════════════════════════════════════════════════════════════
++# CONFIGURATION V7 (tout est surchargeable par variable d'environnement)
++# ══════════════════════════════════════════════════════════════════════════════
++
++def _env_int(name, default):
++    try:
++        return int(os.environ.get(name, default))
++    except (TypeError, ValueError):
++        return default
++
++
++MAX_MESSAGE_CHARS = _env_int("MAX_MESSAGE_CHARS", 8000)
++MAX_IMAGE_B64 = _env_int("MAX_IMAGE_B64", 4_000_000)        # limite Groq ~4 Mo en base64
++MAX_LIVE_IMAGE_B64 = _env_int("MAX_LIVE_IMAGE_B64", 1_500_000)
++MAX_AUDIO_BYTES = _env_int("MAX_AUDIO_BYTES", 2_500_000)
++MAX_REQUEST_BYTES = _env_int("MAX_REQUEST_BYTES", 6_000_000)
++SESSION_TTL = _env_int("SESSION_TTL_DAYS", 30) * 86400
++MAX_SESSIONS_PER_USER = _env_int("MAX_SESSIONS_PER_USER", 20)
++GROQ_TOTAL_TIMEOUT = _env_int("GROQ_TOTAL_TIMEOUT", 45)    # secondes, toute la cascade
++DB_CONNECT_TIMEOUT = _env_int("DB_CONNECT_TIMEOUT", 10)
++TRUST_PROXY_HOPS = _env_int("TRUST_PROXY_HOPS", 1)         # Render = 1 proxy devant l'app
++ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "").strip()
++GROQ_STT_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
++GROQ_STT_MODEL = os.environ.get("GROQ_STT_MODEL", "whisper-large-v3-turbo").strip()
++APP_VERSION = "7.0"
++
+ 
+ # ══════════════════════════════════════════════════════════════════════════════
+ # MODÈLES LUMINA
+@@ -83,9 +111,10 @@
+ VALID_MODELS = set(MODELS_DISPLAY.keys())
+ 
+ # Modèles supportant le format multimodal (vision) sur Groq.
+-VISION_MODELS = {
+-    PRIME_MODEL,
+-}
++_vis_env = [m.strip() for m in os.environ.get("GROQ_VISION_MODELS", "").split(",") if m.strip()]
++# Ordre = priorité. Par défaut : Prime (comme en v6.1). À surcharger si Groq change son catalogue.
++VISION_MODEL_LIST = _vis_env or [PRIME_MODEL]
++VISION_MODELS = set(VISION_MODEL_LIST)
+ 
+ 
+ # ══════════════════════════════════════════════════════════════════════════════
+@@ -133,7 +162,14 @@
+ 
+ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ 
+-app = Flask(__name__, static_folder=BASE_DIR)
++WEB_DIR = os.path.join(BASE_DIR, "www")
++
++# static_folder=None : aucune route statique implicite. Seul www/ est servi (voir static_files).
++app = Flask(__name__, static_folder=None)
++app.config["MAX_CONTENT_LENGTH"] = MAX_REQUEST_BYTES
++
++if TRUST_PROXY_HOPS > 0:
++    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=TRUST_PROXY_HOPS, x_proto=TRUST_PROXY_HOPS)
+ 
+ _cors_env = os.environ.get("CORS_ORIGINS", "*").strip()
+ 
+@@ -195,13 +231,14 @@
+ # BASE DE DONNÉES
+ # ══════════════════════════════════════════════════════════════════════════════
+ 
+-DB_FILE = os.path.join(BASE_DIR, "lumina.db")
++DB_FILE = os.environ.get("SQLITE_PATH") or os.path.join(BASE_DIR, "lumina.db")
+ 
+ EMAIL_RE = re.compile(
+     r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+ )
+ 
+ class DBConnection:
++    """Façade commune SQLite / PostgreSQL (placeholders '?' → '%s' pour psycopg)."""
+ 
+     def __init__(self, conn, postgres=False):
+         self.conn = conn
+@@ -209,7 +246,8 @@
+ 
+     def execute(self, query, params=()):
+         if self.postgres:
+-            query = query.replace("?", "%s")
++            # '%' littéral doublé, puis '?' → '%s' (psycopg utilise %s).
++            query = query.replace("%", "%%").replace("?", "%s")
+         return self.conn.execute(query, params)
+ 
+     def commit(self):
+@@ -220,47 +258,38 @@
+ 
+     def close(self):
+         self.conn.close()
+-def get_db():
+ 
+-    if "db" not in g:
+ 
++def get_db():
++    if "db" not in g:
+         if DATABASE_URL:
+             import psycopg
+             from psycopg.rows import dict_row
+-
+             conn = psycopg.connect(
+                 DATABASE_URL,
+-                row_factory=dict_row
+-            )
+-
+-            g.db = DBConnection(
+-                conn,
+-                postgres=True
++                row_factory=dict_row,
++                connect_timeout=DB_CONNECT_TIMEOUT,
+             )
+-
++            g.db = DBConnection(conn, postgres=True)
+         else:
+-            conn = sqlite3.connect(
+-                DB_FILE,
+-                timeout=10
+-            )
+-
++            conn = sqlite3.connect(DB_FILE, timeout=10)
+             conn.row_factory = sqlite3.Row
+-
+             conn.execute("PRAGMA foreign_keys = ON")
+             conn.execute("PRAGMA journal_mode = WAL")
+             conn.execute("PRAGMA busy_timeout = 5000")
++            g.db = DBConnection(conn, postgres=False)
++    return g.db
+ 
+-            g.db = DBConnection(
+-                conn,
+-                postgres=False
+-            )
+ 
+ @app.teardown_appcontext
+ def close_db(exception=None):
+-
+     db = g.pop("db", None)
+-
+     if db is not None:
++        try:
++            if exception is not None:
++                db.rollback()
++        except Exception:
++            pass
+         db.close()
+ 
+ 
+@@ -367,9 +396,88 @@
+         conn.commit()
+         conn.close()
+ 
+-init_db()
++
++# ── Migration additive v7 (idempotente, réversible) ──────────────────────────
++# Ajoute uniquement : table feedback + index sur sessions. Aucune donnée existante n'est touchée.
++# Retour arrière : DROP TABLE feedback; DROP INDEX idx_sessions_user; DROP INDEX idx_sessions_created;
++_V7_SQL_SQLITE = """
++CREATE TABLE IF NOT EXISTS feedback (
++    id INTEGER PRIMARY KEY AUTOINCREMENT,
++    user_id INTEGER NOT NULL,
++    kind TEXT NOT NULL,
++    conv_id TEXT,
++    message_id TEXT,
++    text TEXT,
++    created_at REAL NOT NULL,
++    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
++);
++CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
++CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at);
++"""
++_V7_SQL_PG = """
++CREATE TABLE IF NOT EXISTS feedback (
++    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
++    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
++    kind TEXT NOT NULL,
++    conv_id TEXT,
++    message_id TEXT,
++    text TEXT,
++    created_at DOUBLE PRECISION NOT NULL
++);
++CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
++CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at);
++"""
++
++
++def _add_v7_tables():
++    if DATABASE_URL:
++        import psycopg
++        conn = psycopg.connect(DATABASE_URL, connect_timeout=DB_CONNECT_TIMEOUT)
++        try:
++            conn.execute(_V7_SQL_PG)
++            conn.commit()
++        finally:
++            conn.close()
++    else:
++        conn = sqlite3.connect(DB_FILE)
++        try:
++            conn.executescript(_V7_SQL_SQLITE)
++            conn.commit()
++        finally:
++            conn.close()
++
++
++_schema_ready = False
++_schema_lock = threading.Lock()
++
++
++def _safe_err(e):
++    msg = f"{type(e).__name__}: {str(e).splitlines()[0] if str(e) else ''}"
++    if DATABASE_URL:
++        msg = msg.replace(DATABASE_URL, "***")
++    return msg[:200]
+ 
+ 
++def ensure_schema():
++    """Initialise le schéma sans jamais faire planter le démarrage si la base dort/est injoignable."""
++    global _schema_ready
++    if _schema_ready:
++        return True
++    with _schema_lock:
++        if _schema_ready:
++            return True
++        try:
++            init_db()
++            _add_v7_tables()
++            _schema_ready = True
++        except Exception as e:
++            print(f"[DB] initialisation impossible : {_safe_err(e)}")
++            return False
++    return True
++
++
++ensure_schema()
++
+ # ══════════════════════════════════════════════════════════════════════════════
+ # MÉMOIRE
+ # ══════════════════════════════════════════════════════════════════════════════
+@@ -494,123 +602,149 @@
+ # AUTH
+ # ══════════════════════════════════════════════════════════════════════════════
+ 
+-LOGIN_MAX_ATTEMPTS = 8
+-LOGIN_WINDOW = 300
+-
+-login_lock = threading.Lock()
+-login_attempts = {}
++class SlidingWindow:
++    """Fenêtre glissante en mémoire (par processus : voir DEPLOY.md, 1 seul worker gunicorn)."""
+ 
++    def __init__(self, limit, window):
++        self.limit = limit
++        self.window = window
++        self._d = {}
++        self._lock = threading.Lock()
++        self._n = 0
++
++    def _prune(self, key, now):
++        q = [t for t in self._d.get(key, []) if now - t < self.window]
++        if q:
++            self._d[key] = q
++        else:
++            self._d.pop(key, None)
++        return q
+ 
+-def login_blocked(email):
+-
+-    now = time.time()
+-
+-    with login_lock:
+-
+-        attempts = [
+-            t
+-            for t in login_attempts.get(email, [])
+-            if now - t < LOGIN_WINDOW
+-        ]
+-
+-        login_attempts[email] = attempts
++    def _tick(self, now):
++        self._n += 1
++        if self._n % 500 == 0:
++            for k in list(self._d):
++                self._prune(k, now)
++
++    def blocked(self, key):
++        now = time.time()
++        with self._lock:
++            return len(self._prune(key, now)) >= self.limit
++
++    def add(self, key):
++        now = time.time()
++        with self._lock:
++            q = self._prune(key, now)
++            q.append(now)
++            self._d[key] = q
++            self._tick(now)
++
++    def allow(self, key):
++        """True si autorisé (et consomme un jeton), False si la limite est atteinte."""
++        now = time.time()
++        with self._lock:
++            q = self._prune(key, now)
++            if len(q) >= self.limit:
++                return False
++            q.append(now)
++            self._d[key] = q
++            self._tick(now)
++            return True
+ 
+-        return len(attempts) >= LOGIN_MAX_ATTEMPTS
++    def clear(self, key):
++        with self._lock:
++            self._d.pop(key, None)
+ 
+ 
+-def register_failed_login(email):
++LOGIN_MAX_ATTEMPTS = 8
++LOGIN_WINDOW = 300
++CHAT_MAX_PER_MIN = 20
++SIGNUP_MAX_PER_HOUR = _env_int("SIGNUP_MAX_PER_HOUR", 10)
++LIVE_MAX_PER_MIN = _env_int("LIVE_MAX_PER_MIN", 40)
+ 
+-    with login_lock:
++LOGIN_LIMITER = SlidingWindow(LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW)        # clé : email|ip
++LOGIN_IP_LIMITER = SlidingWindow(40, LOGIN_WINDOW)                     # clé : ip
++SIGNUP_LIMITER = SlidingWindow(SIGNUP_MAX_PER_HOUR, 3600)              # clé : ip
++CHAT_LIMITER = SlidingWindow(CHAT_MAX_PER_MIN, 60)                     # clé : user_id
++LIVE_LIMITER = SlidingWindow(LIVE_MAX_PER_MIN, 60)
++STT_LIMITER = SlidingWindow(LIVE_MAX_PER_MIN, 60)
++FEEDBACK_LIMITER = SlidingWindow(30, 60)
++SEARCH_LIMITER = SlidingWindow(10, 60)
+ 
+-        login_attempts.setdefault(
+-            email,
+-            []
+-        ).append(time.time())
+ 
++def client_ip():
++    return request.remote_addr or "?"
+ 
+-def clear_login_attempts(email):
+ 
+-    with login_lock:
+-        login_attempts.pop(email, None)
++def login_blocked(email, ip):
++    # Clé (email, ip) : un tiers ne peut plus verrouiller le compte d'une victime depuis une autre IP.
++    return (
++        LOGIN_LIMITER.blocked(f"{email}|{ip}")
++        or LOGIN_IP_LIMITER.blocked(ip)
++    )
+ 
+ 
+-# ══════════════════════════════════════════════════════════════════════════════
+-# RATE LIMIT CHAT
+-# ══════════════════════════════════════════════════════════════════════════════
++def register_failed_login(email, ip):
++    LOGIN_LIMITER.add(f"{email}|{ip}")
++    LOGIN_IP_LIMITER.add(ip)
+ 
+-CHAT_MAX_PER_MIN = 20
+ 
+-chat_lock = threading.Lock()
+-chat_calls = {}
++def clear_login_attempts(email, ip):
++    LOGIN_LIMITER.clear(f"{email}|{ip}")
+ 
+ 
+ def chat_rate_limited(user_id):
++    return not CHAT_LIMITER.allow(user_id)
+ 
+-    now = time.time()
+ 
+-    with chat_lock:
+-
+-        calls = [
+-            t
+-            for t in chat_calls.get(user_id, [])
+-            if now - t < 60
+-        ]
+-
+-        if len(calls) >= CHAT_MAX_PER_MIN:
+-
+-            chat_calls[user_id] = calls
++# ══════════════════════════════════════════════════════════════════════════════
++# AUTH DECORATOR
++# ══════════════════════════════════════════════════════════════════════════════
+ 
+-            return True
++def purge_expired_sessions(db):
++    db.execute("DELETE FROM sessions WHERE created_at < ?", (time.time() - SESSION_TTL,))
++    db.commit()
+ 
+-        calls.append(now)
+ 
+-        chat_calls[user_id] = calls
++def trim_user_sessions(db, user_id):
++    keep = max(1, MAX_SESSIONS_PER_USER - 1)
++    db.execute(
++        "DELETE FROM sessions WHERE user_id = ? AND token NOT IN "
++        "(SELECT token FROM sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?)",
++        (user_id, user_id, keep),
++    )
++    db.commit()
+ 
+-        return False
+ 
++def get_bearer_token():
++    auth_header = request.headers.get("Authorization", "")
++    return auth_header[7:].strip() if auth_header.startswith("Bearer ") else None
+ 
+-# ══════════════════════════════════════════════════════════════════════════════
+-# AUTH DECORATOR
+-# ══════════════════════════════════════════════════════════════════════════════
+ 
+ def require_auth(f):
+ 
+     @wraps(f)
+     def wrapper(*args, **kwargs):
+ 
+-        auth_header = request.headers.get(
+-            "Authorization",
+-            ""
+-        )
+-
+-        token = (
+-            auth_header[7:]
+-            if auth_header.startswith("Bearer ")
+-            else None
+-        )
++        token = get_bearer_token()
+ 
+         if not token:
+-
+-            return jsonify({
+-                "error": "Authentification requise"
+-            }), 401
++            return jsonify({"error": "Authentification requise"}), 401
+ 
+         db = get_db()
+ 
+         row = db.execute(
+-            """
+-            SELECT user_id
+-            FROM sessions
+-            WHERE token = ?
+-            """,
++            "SELECT user_id, created_at FROM sessions WHERE token = ?",
+             (token,)
+         ).fetchone()
+ 
+         if not row:
++            return jsonify({"error": "Session invalide ou expirée"}), 401
+ 
+-            return jsonify({
+-                "error": "Session invalide ou expirée"
+-            }), 401
++        if time.time() - float(row["created_at"]) > SESSION_TTL:
++            db.execute("DELETE FROM sessions WHERE token = ?", (token,))
++            db.commit()
++            return jsonify({"error": "Session expirée, reconnecte-toi"}), 401
+ 
+         request.user_id = row["user_id"]
+ 
+@@ -958,7 +1092,9 @@
+     messages,
+     preferred_model=DEFAULT_MODEL,
+     temperature=0.75,
+-    reason_type="chat"
++    reason_type="chat",
++    max_tokens=4096,
++    deadline_s=None
+ ):
+ 
+     preferred_model = normalize_model(
+@@ -967,6 +1103,13 @@
+ 
+     is_mm = is_multimodal(messages)
+ 
++    # Délai global pour TOUTE la cascade (évite le worker tué par gunicorn à 120 s).
++    t_deadline = time.time() + (deadline_s or GROQ_TOTAL_TIMEOUT)
++
++    # Un message avec image ne doit jamais partir vers un modèle non-vision.
++    if is_mm and preferred_model not in VISION_MODELS:
++        preferred_model = VISION_MODEL_LIST[0]
++
+     models_to_try = [
+         preferred_model
+     ]
+@@ -986,6 +1129,9 @@
+ 
+     for model in models_to_try:
+ 
++        if time.time() >= t_deadline:
++            break
++
+         settings = reasoning_settings(
+             model,
+             reason_type
+@@ -993,6 +1139,9 @@
+ 
+         for key_index, api_key in enumerate(GROQ_KEYS):
+ 
++            if time.time() >= t_deadline:
++                break
++
+             headers = {
+                 "Authorization": f"Bearer {api_key}",
+                 "Content-Type": "application/json",
+@@ -1002,20 +1151,23 @@
+                 "model": model,
+                 "messages": messages,
+                 "temperature": temperature,
+-                "max_tokens": 4096,
++                "max_tokens": max_tokens,
+             }
+ 
+             payload.update(settings)
+ 
+             for attempt in range(2):
+ 
++                if time.time() >= t_deadline:
++                    break
++
+                 try:
+ 
+                     r = requests.post(
+                         GROQ_URL,
+                         headers=headers,
+                         json=payload,
+-                        timeout=30
++                        timeout=max(2, min(30, t_deadline - time.time()))
+                     )
+ 
+                     if r.status_code == 200:
+@@ -1333,22 +1485,29 @@
+ # ROUTES STATIQUES
+ # ══════════════════════════════════════════════════════════════════════════════
+ 
++ALLOWED_STATIC_EXT = {
++    ".html", ".js", ".css", ".json", ".png", ".jpg", ".jpeg", ".webp",
++    ".svg", ".ico", ".woff2", ".txt", ".webmanifest",
++}
++
++
+ @app.route("/")
+ def index():
+-
+-    return send_from_directory(
+-        BASE_DIR,
+-        "index.html"
+-    )
++    return send_from_directory(WEB_DIR, "index.html")
+ 
+ 
+ @app.route("/<path:path>")
+ def static_files(path):
+-
+-    return send_from_directory(
+-        BASE_DIR,
+-        path
+-    )
++    """Sert UNIQUEMENT le contenu de www/ (jamais la racine du projet, jamais un fichier caché)."""
++    parts = path.split("/")
++    ext = os.path.splitext(path)[1].lower()
++    if (
++        any(p == "" or p.startswith(".") for p in parts)
++        or ext not in ALLOWED_STATIC_EXT
++        or not os.path.isfile(os.path.join(WEB_DIR, *parts))
++    ):
++        return jsonify({"error": "Introuvable"}), 404
++    return send_from_directory(WEB_DIR, path)
+ 
+ 
+ # ══════════════════════════════════════════════════════════════════════════════
+@@ -1393,6 +1552,16 @@
+             else ""
+         )
+ 
++    ip = client_ip()
++
++    if not SIGNUP_LIMITER.allow(ip):
++        return jsonify({
++            "error": "Trop d'inscriptions depuis cette connexion, réessaie plus tard"
++        }), 429
++
++    if len(email) > 254 or len(password) > 256 or len(display_name) > 60:
++        return jsonify({"error": "Champs trop longs"}), 400
++
+     if not EMAIL_RE.match(email):
+ 
+         return jsonify({
+@@ -1506,7 +1675,12 @@
+         ""
+     )
+ 
+-    if login_blocked(email):
++    ip = client_ip()
++
++    if len(email) > 254 or len(password) > 256:
++        return jsonify({"error": "Email ou mot de passe incorrect"}), 401
++
++    if login_blocked(email, ip):
+ 
+         return jsonify({
+             "error": (
+@@ -1534,7 +1708,7 @@
+         )
+     ):
+ 
+-        register_failed_login(email)
++        register_failed_login(email, ip)
+ 
+         return jsonify({
+             "error": (
+@@ -1542,7 +1716,10 @@
+             )
+         }), 401
+ 
+-    clear_login_attempts(email)
++    clear_login_attempts(email, ip)
++
++    purge_expired_sessions(db)
++    trim_user_sessions(db, row["id"])
+ 
+     token = secrets.token_urlsafe(32)
+ 
+@@ -1729,6 +1906,24 @@
+     # DÉTECTION D'INTENTION
+     # ──────────────────────────────────────────────────────────────────────
+ 
++    # ── Validations V7 (taille, image, identifiant de conversation) ──────
++    if len(user_msg) > MAX_MESSAGE_CHARS:
++        return jsonify({
++            "error": f"Message trop long (maximum {MAX_MESSAGE_CHARS} caractères)"
++        }), 413
++
++    if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,64}", conv_id):
++        return jsonify({"error": "Identifiant de conversation invalide"}), 400
++
++    if image_data:
++        if not (isinstance(image_data, str) and IMAGE_PREFIX_RE.match(image_data)):
++            return jsonify({"error": "Image invalide (JPEG, PNG ou WebP attendu)"}), 400
++        if len(image_data) > MAX_IMAGE_B64:
++            return jsonify({"error": "Image trop volumineuse"}), 413
++        has_image = True
++
++    regen = bool(data.get("regen"))
++
+     intent = detect_intent(
+         user_msg
+     )
+@@ -1849,6 +2044,14 @@
+         request.user_id
+     )
+ 
++    # « Régénérer » : on retire l'échange précédent identique pour ne pas le dupliquer.
++    if (
++        regen
++        and historique
++        and historique[-1].get("user") == user_msg
++    ):
++        historique = historique[:-1]
++
+     # ──────────────────────────────────────────────────────────────────────
+     # APPRENTISSAGE AUTOMATIQUE
+     # ──────────────────────────────────────────────────────────────────────
+@@ -1916,7 +2119,7 @@
+         f"{user_msg.lower().strip()}"
+     )
+ 
+-    if not should_search:
++    if not should_search and not has_image and not regen:
+ 
+         cached = cache_get(
+             cache_key
+@@ -2042,7 +2245,7 @@
+ 
+     if result["ok"]:
+ 
+-        if not should_search:
++        if not should_search and not has_image:
+ 
+             cache_set(
+                 cache_key,
+@@ -2090,7 +2293,7 @@
+         "sources": sources,
+ 
+         "ok": result["ok"]
+-    })
++    }), (200 if result["ok"] else 503)
+ 
+ 
+ # ══════════════════════════════════════════════════════════════════════════════
+@@ -2122,8 +2325,13 @@
+     "/search_web",
+     methods=["POST"]
+ )
++@require_auth
+ def search_web():
+ 
++    if not SEARCH_LIMITER.allow(request.user_id):
++        return jsonify({"error": "Trop de recherches, patiente une minute."}), 429
++
++
+     data = request.get_json(
+         silent=True
+     ) or {}
+@@ -2192,6 +2400,9 @@
+ )
+ def groq_models():
+ 
++    if not is_admin():
++        return jsonify({"error": "Introuvable"}), 404
++
+     if not GROQ_KEYS:
+ 
+         return jsonify({
+@@ -2267,56 +2478,411 @@
+ # STATUS
+ # ══════════════════════════════════════════════════════════════════════════════
+ 
+-@app.route(
+-    "/status",
+-    methods=["GET"]
+-)
++# ══════════════════════════════════════════════════════════════════════════════
++# V7 — UTILITAIRES, EN-TÊTES, ERREURS
++# ══════════════════════════════════════════════════════════════════════════════
++
++IMAGE_PREFIX_RE = re.compile(r"^data:image/(jpeg|jpg|png|webp);base64,")
++
++
++def is_admin():
++    if not ADMIN_TOKEN:
++        return False
++    return hmac.compare_digest(
++        request.headers.get("X-Admin-Token", ""),
++        ADMIN_TOKEN
++    )
++
++
++def clean_conv_id(value):
++    value = (value or "default")
++    value = str(value).strip() or "default"
++    return value if re.fullmatch(r"[A-Za-z0-9_.:-]{1,64}", value) else None
++
++
++@app.before_request
++def guard_schema():
++    """Si la base dormait au démarrage (Neon), on retente ici au lieu de planter."""
++    if request.method == "OPTIONS":
++        return None
++    if request.endpoint in ("index", "static_files", "healthz"):
++        return None
++    if not _schema_ready and not ensure_schema():
++        return jsonify({
++            "error": "Base de données indisponible, réessaie dans un instant."
++        }), 503
++    return None
++
++
++@app.after_request
++def security_headers(resp):
++    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
++    resp.headers.setdefault("Referrer-Policy", "no-referrer")
++    resp.headers.setdefault("X-Frame-Options", "DENY")
++    resp.headers.setdefault(
++        "Permissions-Policy",
++        "camera=(self), microphone=(self), geolocation=()"
++    )
++    p = request.path
++    if p in ("/", "/index.html", "/sw.js", "/manifest.json"):
++        resp.headers["Cache-Control"] = "no-cache"
++    elif p.startswith(("/auth", "/chat", "/live", "/feedback", "/get_memory", "/conv_memory")):
++        resp.headers["Cache-Control"] = "no-store"
++    return resp
++
++
++@app.errorhandler(413)
++def too_large(_e):
++    return jsonify({"error": "Requête trop volumineuse"}), 413
++
++
++@app.errorhandler(404)
++def not_found(_e):
++    return jsonify({"error": "Introuvable"}), 404
++
++
++@app.errorhandler(405)
++def bad_method(_e):
++    return jsonify({"error": "Méthode non autorisée"}), 405
++
++
++# ══════════════════════════════════════════════════════════════════════════════
++# V7 — SANTÉ / STATUS
++# ══════════════════════════════════════════════════════════════════════════════
++
++@app.route("/healthz", methods=["GET"])
++def healthz():
++    """Sonde pour Render : vérifie que la base répond. Ne révèle aucune configuration."""
++    ok = False
++    try:
++        if ensure_schema():
++            get_db().execute("SELECT 1").fetchone()
++            ok = True
++    except Exception as e:
++        print(f"[HEALTH] {_safe_err(e)}")
++    return jsonify({"ok": ok}), (200 if ok else 503)
++
++
++@app.route("/status", methods=["GET"])
+ def status():
++    out = {"status": "online", "version": APP_VERSION}
++    if is_admin():
++        db = get_db()
++        out.update({
++            "default_model": DEFAULT_MODEL,
++            "flash_model": FLASH_MODEL,
++            "prime_model": PRIME_MODEL,
++            "vision_models": VISION_MODEL_LIST,
++            "stt_model": GROQ_STT_MODEL,
++            "keys": len(GROQ_KEYS),
++            "cache": len(cache),
++            "users": db.execute("SELECT COUNT(*) AS n FROM users").fetchone()["n"],
++            "database": "postgresql" if DATABASE_URL else "sqlite",
++        })
++    return jsonify(out)
+ 
+-    db = get_db()
+ 
+-    nb_users = db.execute(
+-        """
+-        SELECT COUNT(*) AS n
+-        FROM users
++# ══════════════════════════════════════════════════════════════════════════════
++# V7 — FEEDBACK & SUPPRESSION DE COMPTE
++# ══════════════════════════════════════════════════════════════════════════════
++
++FEEDBACK_KINDS = {"like", "dislike", "copy", "share", "bug_report"}
++
++
++@app.route("/feedback", methods=["POST"])
++@require_auth
++def feedback():
++    data = request.get_json(silent=True) or {}
++    kind = str(data.get("type", "")).strip()
++
++    if kind not in FEEDBACK_KINDS:
++        return jsonify({"error": "Type de retour inconnu"}), 400
++
++    if not FEEDBACK_LIMITER.allow(request.user_id):
++        return jsonify({"error": "Trop de retours en peu de temps"}), 429
++
++    text = str(data.get("text") or "")[:2000]
++    conv_id = clean_conv_id(data.get("conv_id"))
++    message_id = str(data.get("message_id") or "")[:80]
++
++    if kind == "bug_report" and not text.strip():
++        return jsonify({"error": "Décris le problème"}), 400
++
++    db = get_db()
++    db.execute(
+         """
+-    ).fetchone()["n"]
++        INSERT INTO feedback (user_id, kind, conv_id, message_id, text, created_at)
++        VALUES (?, ?, ?, ?, ?, ?)
++        """,
++        (request.user_id, kind, conv_id, message_id or None, text or None, time.time())
++    )
++    db.commit()
++    return jsonify({"status": "ok"})
+ 
+-    return jsonify({
+ 
+-        "status": "online",
++@app.route("/auth/account", methods=["DELETE"])
++@require_auth
++def delete_account():
++    """Suppression définitive du compte et de toutes ses données (cascade SQL)."""
++    data = request.get_json(silent=True) or {}
++    password = str(data.get("password", ""))
++    ip = client_ip()
++    key = f"acct:{request.user_id}|{ip}"
++
++    if LOGIN_LIMITER.blocked(key):
++        return jsonify({"error": "Trop de tentatives, réessaie dans quelques minutes"}), 429
++
++    db = get_db()
++    row = db.execute(
++        "SELECT password_hash FROM users WHERE id = ?",
++        (request.user_id,)
++    ).fetchone()
++
++    if not row or len(password) > 256 or not check_password_hash(row["password_hash"], password):
++        LOGIN_LIMITER.add(key)
++        return jsonify({"error": "Mot de passe incorrect"}), 401
++
++    uid = request.user_id
++    # Suppressions explicites (en plus des ON DELETE CASCADE) pour ne dépendre d'aucun réglage.
++    for table in ("feedback", "conv_memories", "user_knowledge", "sessions"):
++        db.execute(f"DELETE FROM {table} WHERE user_id = ?", (uid,))
++    db.execute("DELETE FROM users WHERE id = ?", (uid,))
++    db.commit()
++    return jsonify({"status": "deleted"})
++
++
++# ══════════════════════════════════════════════════════════════════════════════
++# V7 — MODE LIVE (vision caméra + voix)
++# ══════════════════════════════════════════════════════════════════════════════
++
++LIVE_OBSERVE_PROMPT = """Tu es Lumina en mode Live. À travers la caméra de l'utilisateur, tu vois ce qu'il fait en ce moment et tu l'accompagnes à voix haute, comme un ami attentif.
+ 
+-        "version": "6.1",
++Règles :
++- Français, 1 ou 2 phrases courtes et naturelles, à l'oral. Pas de markdown, pas de liste, pas d'emoji.
++- Ne commente que ce qui est nouveau, utile ou intéressant par rapport à tes derniers commentaires. Ne te répète jamais.
++- S'il accomplit une tâche (cuisine, écriture, bricolage, exercice, lecture, etc.), aide-le : un conseil, une correction, un encouragement ou une question utile.
++- Si rien ne mérite d'être dit maintenant, réponds exactement : [SILENCE]
++- Ne dis jamais « je vois une image de ». Tu regardes en direct.
++- N'identifie jamais une personne à son visage. Ne présente jamais une émotion, une santé ou une origine comme un fait.
++- Si la situation semble dangereuse, dis-le brièvement et calmement."""
+ 
+-        "default_model":
+-            DEFAULT_MODEL,
++LIVE_TURN_PROMPT = """Tu es Lumina en conversation vocale en direct. L'utilisateur te parle ; tu peux voir ce que sa caméra montre (image jointe, si elle est présente).
++Réponds en 1 à 3 phrases orales et naturelles, en français, sans markdown ni emoji. Si la question porte sur ce qu'il fait ou montre, appuie-toi sur l'image. Si tu ne vois pas assez bien, dis-le simplement. N'identifie jamais une personne à son visage."""
+ 
+-        "flash_model":
+-            FLASH_MODEL,
++LIVE_LEVELS = {
++    "discret": "Sois très économe : ne parle que si c'est vraiment utile ou important.",
++    "normal": "Parle quand tu as quelque chose d'utile ou de pertinent à ajouter.",
++    "bavard": "Tu peux être plus réactif et commenter plus souvent, toujours brièvement.",
++}
+ 
+-        "prime_model":
+-            PRIME_MODEL,
++_STT_NOISE = (
++    "sous-titrage", "sous-titres", "amara.org", "merci d'avoir regardé",
++    "merci d’avoir regardé", "thanks for watching", "abonnez-vous",
++)
+ 
+-        "models":
+-            GROQ_MODELS_CASCADE,
+ 
+-        "keys":
+-            len(GROQ_KEYS),
++def is_stt_noise(text):
++    t = (text or "").strip().lower()
++    if len(t) < 2:
++        return True
++    return any(n in t for n in _STT_NOISE)
++
++
++def clean_spoken(text, limit=450):
++    t = re.sub(r"<think>.*?</think>", " ", text or "", flags=re.S)
++    t = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", t)
++    t = re.sub(r"[*_`#>~]+", "", t)
++    t = re.sub(r"\s+", " ", t).strip()
++    if len(t) > limit:
++        cut = t[:limit]
++        end = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
++        t = cut[:end + 1] if end > 80 else cut.rstrip() + "…"
++    return t
+ 
+-        "cache":
+-            len(cache),
+ 
+-        "cache_size":
+-            CACHE_SIZE,
++@app.route("/live/stt", methods=["POST"])
++@require_auth
++def live_stt():
++    """Transcription d'un segment audio (Whisper via Groq). Marche aussi dans une WebView Android."""
++    if not GROQ_KEYS:
++        return jsonify({"ok": False, "error": "Transcription indisponible"}), 503
+ 
+-        "users":
+-            nb_users,
++    f = request.files.get("audio")
++    if not f:
++        return jsonify({"error": "Audio manquant"}), 400
++
++    blob = f.read(MAX_AUDIO_BYTES + 1)
++    if len(blob) > MAX_AUDIO_BYTES:
++        return jsonify({"error": "Audio trop volumineux"}), 413
++    if len(blob) < 1500:
++        return jsonify({"ok": True, "text": ""})
++
++    mime = (f.mimetype or "audio/webm").split(";")[0].lower()
++    ext = {
++        "audio/webm": "webm", "audio/ogg": "ogg", "audio/mp4": "m4a",
++        "audio/mpeg": "mp3", "audio/wav": "wav", "audio/x-wav": "wav",
++    }.get(mime)
++    if not ext:
++        return jsonify({"error": "Format audio non pris en charge"}), 415
++
++    if not STT_LIMITER.allow(request.user_id):
++        return jsonify({"error": "Trop de requêtes vocales, patiente un instant"}), 429
++
++    lang = (request.form.get("lang") or "fr").lower()
++    if not re.fullmatch(r"[a-z]{2,3}", lang):
++        lang = "fr"
+ 
+-        "chat_limit_per_minute":
+-            CHAT_MAX_PER_MIN,
++    for api_key in GROQ_KEYS:
++        try:
++            r = requests.post(
++                GROQ_STT_URL,
++                headers={"Authorization": f"Bearer {api_key}"},
++                files={"file": (f"audio.{ext}", blob, mime)},
++                data={
++                    "model": GROQ_STT_MODEL,
++                    "language": lang,
++                    "response_format": "json",
++                    "temperature": "0",
++                },
++                timeout=25,
++            )
++        except requests.exceptions.RequestException as e:
++            print(f"[STT] réseau : {type(e).__name__}")
++            continue
+ 
+-        "api":
+-            GROQ_URL
++        if r.status_code == 200:
++            try:
++                text = (r.json().get("text") or "").strip()
++            except ValueError:
++                text = ""
++            return jsonify({"ok": True, "text": "" if is_stt_noise(text) else text})
++
++        print(f"[STT] HTTP {r.status_code}")
++        if r.status_code in (401, 429):
++            continue
++        break
++
++    return jsonify({"ok": False, "error": "Transcription indisponible"}), 503
++
++
++@app.route("/live/respond", methods=["POST"])
++@require_auth
++def live_respond():
++    """
++    kind="observe" : l'IA regarde l'image et décide seule de parler ou non.
++    kind="turn"    : l'utilisateur a parlé ; l'IA répond (avec l'image courante si fournie).
++    Les images ne sont jamais enregistrées côté serveur.
++    """
++    data = request.get_json(silent=True) or {}
++    kind = data.get("kind")
++
++    if kind not in ("observe", "turn"):
++        return jsonify({"error": "kind doit valoir observe ou turn"}), 400
++
++    conv_id = clean_conv_id(data.get("conv_id"))
++    if conv_id is None:
++        return jsonify({"error": "Identifiant de conversation invalide"}), 400
++
++    image = data.get("image")
++    has_image = False
++    if image:
++        if not (isinstance(image, str) and IMAGE_PREFIX_RE.match(image)):
++            return jsonify({"error": "Image invalide"}), 400
++        if len(image) > MAX_LIVE_IMAGE_B64:
++            return jsonify({"error": "Image trop volumineuse"}), 413
++        has_image = True
++
++    if kind == "observe" and not has_image:
++        return jsonify({"error": "Image requise"}), 400
++
++    text = str(data.get("text") or "").strip()
++    if kind == "turn":
++        if not text:
++            return jsonify({"error": "Texte vide"}), 400
++        if len(text) > 1500:
++            return jsonify({"error": "Texte trop long"}), 413
++
++    if not LIVE_LIMITER.allow(request.user_id):
++        return jsonify({"error": "Trop de requêtes Live, patiente un instant"}), 429
++
++    level = data.get("level") if data.get("level") in LIVE_LEVELS else "normal"
++    camera = "arrière" if data.get("camera") == "environment" else "frontale"
++    recent = data.get("recent") if isinstance(data.get("recent"), list) else []
++    recent = [str(x)[:300] for x in recent[-4:]]
++
++    connaissances = load_knowledge(request.user_id)
++    know = ""
++    if connaissances:
++        know = "\n\nCe que tu sais sur l'utilisateur :\n" + "\n".join(
++            f"- {k}: {v}" for k, v in list(connaissances.items())[:20]
++        )
++
++    if kind == "observe":
++        system = f"{LIVE_OBSERVE_PROMPT}\n\n{LIVE_LEVELS[level]}{know}"
++        already = (
++            "Tes derniers commentaires (ne les répète pas) :\n- " + "\n- ".join(recent)
++            if recent else "Tu n'as encore rien dit."
++        )
++        user_content = [
++            {"type": "text", "text": f"Caméra {camera}. {already}\nQue vois-tu de nouveau ? Réponds par [SILENCE] si rien ne mérite d'être dit."},
++            {"type": "image_url", "image_url": {"url": image}},
++        ]
++        messages = [
++            {"role": "system", "content": system},
++            {"role": "user", "content": user_content},
++        ]
++        historique = None
++    else:
++        historique = load_conv_history(request.user_id, conv_id)
++        messages = [{"role": "system", "content": LIVE_TURN_PROMPT + know}]
++        for entry in historique[-6:]:
++            messages.append({"role": "user", "content": str(entry.get("user", ""))[:1500]})
++            messages.append({"role": "assistant", "content": str(entry.get("assistant", ""))[:1500]})
++        if has_image:
++            messages.append({"role": "user", "content": [
++                {"type": "text", "text": f"(Caméra {camera}) {text}"},
++                {"type": "image_url", "image_url": {"url": image}},
++            ]})
++        else:
++            messages.append({"role": "user", "content": text})
++
++    result = call_groq(
++        messages,
++        preferred_model=(VISION_MODEL_LIST[0] if has_image else FLASH_MODEL),
++        temperature=0.6,
++        reason_type="live",
++        max_tokens=300,
++        deadline_s=20,
++    )
++
++    if not result["ok"]:
++        return jsonify({
++            "ok": False,
++            "speak": False,
++            "error": "Lumina n'arrive pas à répondre pour le moment.",
++        }), 503
++
++    spoken = clean_spoken(result["content"])
++
++    if kind == "observe":
++        silent = (not spoken) or spoken.upper().startswith("[SILENCE") or spoken.upper().startswith("SILENCE")
++        return jsonify({
++            "ok": True,
++            "speak": not silent,
++            "text": "" if silent else spoken,
++            "model": result.get("model"),
++        })
++
++    if not spoken:
++        spoken = "Je n'ai pas bien compris, tu peux répéter ?"
++
++    historique.append({"user": "[Live] " + text, "assistant": spoken})
++    save_conv_history(request.user_id, conv_id, historique[-60:])
++
++    return jsonify({
++        "ok": True,
++        "reply": spoken,
++        "model": result.get("model"),
+     })
+ 
+ 
+@@ -2332,7 +2898,7 @@
+     )
+ 
+     print(
+-        "  🌟  Lumina Server v6.1 — Interface Claude-style"
++        "  🌟  Lumina Server v7.0"
+     )
+ 
+     print(
+@@ -2370,7 +2936,7 @@
+ 
+     app.run(
+         host="0.0.0.0",
+-        port=5005,
++        port=_env_int("PORT", 5005),
+         debug=False,
+         threaded=True
+     )
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/manifest.json v7/manifest.json
+--- v6.1/manifest.json	2026-08-10 02:21:02.000000000 +0000
++++ v7/manifest.json	1970-01-01 00:00:00.000000000 +0000
+@@ -1,21 +0,0 @@
+-{
+-  "name": "Lumina Assistant",
+-  "short_name": "Lumina",
+-  "description": "Assistant IA créé par Issa Amakendé Abdoulaye Koné (+223 93770325)",
+-  "start_url": ".",
+-  "display": "standalone",
+-  "background_color": "#0a0a1a",
+-  "theme_color": "#4f46e5",
+-  "icons": [
+-    {
+-      "src": "icon-192.png",
+-      "sizes": "192x192",
+-      "type": "image/png"
+-    },
+-    {
+-      "src": "icon-512.png",
+-      "sizes": "512x512",
+-      "type": "image/png"
+-    }
+-  ]
+-}
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/package.json v7/package.json
+--- v6.1/package.json	2026-09-24 22:18:20.000000000 +0000
++++ v7/package.json	2026-10-21 22:11:56.785428427 +0000
+@@ -4,5 +4,10 @@
+     "@capacitor/android": "^8.5.2",
+     "@capacitor/cli": "^8.5.2",
+     "@capacitor/core": "^8.5.2"
++  },
++  "private": true,
++  "scripts": {
++    "cap:sync": "cap sync android",
++    "test:boot": "node tests/frontend_boot.test.js"
+   }
+ }
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/requirements-dev.txt v7/requirements-dev.txt
+--- v6.1/requirements-dev.txt	1970-01-01 00:00:00.000000000 +0000
++++ v7/requirements-dev.txt	2026-10-21 22:11:56.759709682 +0000
+@@ -0,0 +1,4 @@
++# Tests de bout en bout dans un navigateur (facultatif). Les tests backend n'ont besoin de rien de plus.
++-r requirements.txt
++playwright>=1.45
++Pillow>=10
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/requirements-termux.txt v7/requirements-termux.txt
+--- v6.1/requirements-termux.txt	1970-01-01 00:00:00.000000000 +0000
++++ v7/requirements-termux.txt	2026-10-21 22:11:56.758869077 +0000
+@@ -0,0 +1,7 @@
++# Développement sur Android/Termux : psycopg-binary n'existe pas pour cet environnement.
++# Installer d'abord la libpq système :  pkg install postgresql
++Flask>=3.0,<4
++flask-cors>=4.0,<6
++requests>=2.31,<3
++gunicorn>=21.0,<24
++psycopg>=3.2,<4
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/requirements.txt v7/requirements.txt
+--- v6.1/requirements.txt	2026-09-26 03:53:13.000000000 +0000
++++ v7/requirements.txt	2026-10-21 22:11:56.757258055 +0000
+@@ -1,6 +1,6 @@
+-Flask>=3.0
+-flask-cors>=4.0
+-requests>=2.31
+-gunicorn>=21.0
+-
+-psycopg>=3.2
++# Production (Render / Docker). psycopg[binary] embarque libpq : aucune bibliothèque système à installer.
++Flask>=3.0,<4
++flask-cors>=4.0,<6
++requests>=2.31,<3
++gunicorn>=21.0,<24
++psycopg[binary]>=3.2,<4
+diff -ruN '--exclude=*.png' '--exclude=__pycache__' '--exclude=*.db*' '--exclude=.gradle' '--exclude=*.zip' '--exclude=index.html' '--exclude=www' '--exclude=lumina.js' '--exclude=fix_vision.py' -x docs -x tests -x scripts audit/sw.js v7/sw.js
+--- v6.1/sw.js	2026-08-10 02:21:02.000000000 +0000
++++ v7/sw.js	1970-01-01 00:00:00.000000000 +0000
+@@ -1,3 +0,0 @@
+-self.addEventListener('fetch', function(event) {
+-  // Pour l'instant, il ne fait rien de spécial, mais sa présence est cruciale.
+-});
+
+##### index.html : audit/index.html (= audit/www/index.html) -> v7/www/index.html
+--- v6.1/index.html	2026-09-27 01:59:15.000000000 +0000
++++ v7/www/index.html	2026-10-22 20:04:51.679972013 +0000
+@@ -6,7 +6,8 @@
+ <meta name="theme-color" content="#171717">
+ <title>Lumina</title>
+ <link rel="manifest" href="/manifest.json">
+-<link rel="icon" href="/icons/icon-192.png">
++<link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
++<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+ <link rel="apple-touch-icon" href="/icons/icon-180.png">
+ <meta name="apple-mobile-web-app-capable" content="yes">
+ <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+@@ -704,6 +705,7 @@
+   .ubub{max-width:90%;font-size:14px;}
+ }
+ </style>
++<link rel="stylesheet" href="/v7.css">
+ </head>
+ <body>
+ <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+@@ -729,7 +731,7 @@
+ <div class="auth-scr hide" id="authScr" data-mode="login">
+   <div class="auth-box">
+     <div class="auth-logo">
+-      <svg width="40" height="25" viewBox="0 0 270 170"><use href="#luminaBrain" fill="url(#brainGrad)"/></svg>
++      <div class="lum-logo" role="img" aria-label="Lumina" style="--lw:92px"><div class="lum-aura"></div><div class="lum-tilt"><div class="lum-card"><img src="/icons/icon-512.png" alt="" draggable="false"><span class="lum-shine"></span><i class="lum-glint g1"></i><i class="lum-glint g2"></i><i class="lum-glint g3"></i></div><div class="lum-reflect"><img src="/icons/icon-512.png" alt="" draggable="false"></div></div><i class="lum-sp s1"></i><i class="lum-sp s2"></i><i class="lum-sp s3"></i><i class="lum-sp s4"></i><i class="lum-sp s5"></i></div>
+       <span class="logo-name">Lumina</span>
+     </div>
+     <div class="auth-tabs">
+@@ -755,7 +757,7 @@
+       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+     </button>
+     <div class="logo-w">
+-      <svg width="26" height="16" viewBox="0 0 40 24" fill="none"><use href="#luminaBrain" stroke="#c084fc" stroke-width="1.8"/></svg>
++      <img class="mini-logo" src="/icons/icon-192.png" alt="" width="30" height="30" style="--s:30px">
+       <span class="logo-name">Lumina</span>
+     </div>
+   </div>
+@@ -788,7 +790,7 @@
+ <aside class="sidebar" id="sidebar">
+   <div class="sb-head">
+     <div class="sb-logo">
+-      <svg width="22" height="14" viewBox="0 0 270 170"><use href="#luminaBrain" fill="url(#brainGrad)"/></svg>
++      <img class="mini-logo" src="/icons/icon-192.png" alt="" width="26" height="26" style="--s:26px">
+       <span class="sb-lname">Lumina</span>
+     </div>
+     <button class="sb-x" id="closeSb">
+@@ -806,18 +808,16 @@
+   <div class="sb-sec">Discussions</div>
+   <div class="conv-list" id="convList"></div>
+   <div class="sb-nav">
+-    <div class="sb-nav-item" id="navProjects">
+-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+-      Projets
+-    </div>
+-    <div class="sb-nav-item" id="navArtifacts">
+-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+-      Artéfacts
+-    </div>
+     <div class="sb-nav-item" id="navStg">
+       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+       Paramètres
+     </div>
++    <div class="sb-nav-item" id="navTerms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></svg>
++      Conditions d'utilisation
++    </div>
++    <div class="sb-nav-item" id="navReport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
++      Signaler un problème
++    </div>
+   </div>
+   <div class="sb-foot">
+     <div class="sb-user" id="sbUser">
+@@ -904,7 +904,7 @@
+         <div class="stgl" id="stglWeb"></div>
+       </div>
+       <div class="s-item">
+-        <div class="s-il"><div class="s-ico" style="background:rgba(251,191,36,.12)"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div><div><div class="s-lbl">Vision</div><div class="s-val">Analyse d'images</div></div></div>
++        <div class="s-il"><div class="s-ico" style="background:rgba(251,191,36,.12)"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div><div><div class="s-lbl">Live : commentaires spontanés</div><div class="s-val">L'IA parle d'elle-même quand la caméra est active</div></div></div>
+         <div class="stgl on" id="stglVision"></div>
+       </div>
+     </div>
+@@ -914,6 +914,10 @@
+         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+         Se déconnecter
+       </button>
++      <button class="danger-btn" id="deleteAccBtn">
++        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
++        Supprimer mon compte
++      </button>
+     </div>
+     <div class="s-sec">
+       <div class="s-sec-t">Données</div>
+@@ -929,7 +933,7 @@
+           <svg width="30" height="18" viewBox="0 0 40 24" fill="none" style="flex-shrink:0">
+             <use href="#luminaBrain" stroke="#a78bfa" stroke-width="1.8"/>
+           </svg>
+-          <div><div class="s-lbl">Lumina AI v5.0</div><div class="s-val">Issa Amakendé Abdoulaye Koné · Mali</div></div>
++          <div><div class="s-lbl">Lumina AI v7.0</div><div class="s-val">Issa Amakendé Abdoulaye Koné · Mali</div></div>
+         </div>
+         <span class="s-badge">STABLE</span>
+       </div>
+@@ -939,9 +943,7 @@
+ 
+ <main class="chat" id="chat">
+   <div class="welcome" id="welcome">
+-    <div class="wlgo">
+-      <svg width="64" height="38" viewBox="0 0 40 24" fill="none"><use href="#luminaBrain" stroke="#c084fc" stroke-width="1.8"/></svg>
+-    </div>
++    <div class="lum-logo" role="img" aria-label="Lumina" style="--lw:132px"><div class="lum-aura"></div><div class="lum-tilt"><div class="lum-card"><img src="/icons/icon-512.png" alt="" draggable="false"><span class="lum-shine"></span><i class="lum-glint g1"></i><i class="lum-glint g2"></i><i class="lum-glint g3"></i></div><div class="lum-reflect"><img src="/icons/icon-512.png" alt="" draggable="false"></div></div><i class="lum-sp s1"></i><i class="lum-sp s2"></i><i class="lum-sp s3"></i><i class="lum-sp s4"></i><i class="lum-sp s5"></i></div>
+     <div class="wtitle" id="wtitle">Comment puis-je vous aider aujourd'hui ?</div>
+     <div class="wsub">Je suis Lumina, votre assistant IA multimodal. Posez-moi une question, générez une image, écrivez du code, ou explorez vos idées.</div>
+     <div class="wchips">
+@@ -1036,6 +1038,10 @@
+     <span class="pm-tlbl">Lecture automatique</span>
+     <div class="tgl" id="pmTTSTgl"></div>
+   </div>
++  <div class="pm-trow" id="pmGestures">
++    <div class="pm-tico" style="background:rgba(251,191,36,.1)"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-5.9-2.4L3 16a2 2 0 0 1 3-2.6L8 15"/></svg></div>
++    <span class="pm-tlbl">Gestes (expérimental)</span>
++  </div>
+   <div class="pm-div"></div>
+   <div class="pm-sec">Paramètres rapides</div>
+   <div class="pm-trow" id="pmOpenStg">
+@@ -1052,6 +1058,9 @@
+   </button>
+   <textarea class="inp" id="userInp" placeholder="Message Lumina..." rows="1" autocomplete="off" spellcheck="true"></textarea>
+   <div class="inp-acts">
++    <button class="ibtn" id="liveBtn" aria-label="Mode Live (caméra et voix)">
++      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
++    </button>
+     <button class="ibtn" id="voiceBtn" aria-label="Microphone">
+       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+     </button>
+@@ -1071,6 +1080,45 @@
+ <input type="file" id="audInp" accept="audio/*" multiple style="display:none">
+ <input type="file" id="fileInp" accept="*/*" style="display:none">
+ 
++<!-- Conditions d'utilisation -->
++<div class="modal" id="termsModal">
++  <div class="modal-box" style="max-width:480px;max-height:80dvh;overflow-y:auto;">
++    <div class="modal-t">Conditions d'utilisation</div>
++    <div style="font-size:.8rem;line-height:1.7;color:var(--txt2);white-space:normal;">
++      <p style="margin-bottom:12px;font-weight:600;color:var(--txt);">Lumina est fourni à des fins d'assistance, d'information, d'apprentissage et de productivité.</p>
++      <p style="margin-bottom:12px;">L'utilisateur reste seul responsable de l'usage qu'il fait du service.</p>
++      <p style="margin-bottom:12px;font-weight:600;color:var(--txt);">Il est interdit d'utiliser Lumina pour :</p>
++      <ul style="margin-bottom:12px;padding-left:20px;color:var(--txt2);">
++        <li>des activités illégales,</li>
++        <li>le harcèlement,</li>
++        <li>la fraude,</li>
++        <li>la diffusion de logiciels malveillants,</li>
++        <li>l'atteinte à la vie privée d'autrui.</li>
++      </ul>
++      <p style="margin-bottom:12px;">Les réponses générées par Lumina sont produites automatiquement par un système d'intelligence artificielle et peuvent contenir des erreurs. L'éditeur ne garantit pas l'exactitude absolue des informations fournies et ne peut être tenu responsable des dommages résultant de leur utilisation.</p>
++      <p style="margin-bottom:12px;">L'utilisation du service est réservée aux personnes âgées d'au moins 13 ans ou avec l'autorisation d'un parent ou tuteur légal.</p>
++      <p style="margin-bottom:12px;color:var(--txt3);font-size:.72rem;">Créé par Issa Amakendé Abdoulaye Koné</p>
++    </div>
++    <div class="modal-btns">
++      <button class="mbtn s" id="closeTerms">Fermer</button>
++    </div>
++  </div>
++</div>
++
++<!-- Modal Signaler un problème -->
++<div class="modal" id="reportModal">
++  <div class="modal-box" style="max-width:420px;">
++    <div class="modal-t">Signaler un problème</div>
++    <textarea class="modal-inp" id="reportText" placeholder="Décrivez le problème rencontré..." rows="4" style="min-height:80px;resize:vertical;margin-bottom:8px;"></textarea>
++    <input class="modal-inp" id="reportConvId" type="hidden" value="">
++    <div class="modal-btns">
++      <button class="mbtn s" id="closeReport">Annuler</button>
++      <button class="mbtn p" id="submitReport">Envoyer</button>
++    </div>
++  </div>
++</div>
++
++
+ <script>
+ const WELCOME_EL=document.getElementById("welcome");
+ const BASE = (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ? "https://lumina-ai-sjyp.onrender.com" : "";
+@@ -1099,7 +1147,7 @@
+   theme: localStorage.getItem("L5_theme")||"dark",
+   autoTTS: localStorage.getItem("L5_tts")==="true",
+   web: localStorage.getItem("L5_web")==="true",
+-  vision: true,
++  vision: localStorage.getItem("L5_vision")!=="false",
+   fs: parseInt(localStorage.getItem("L5_fs")||"100"),
+   acc: localStorage.getItem("L5_acc")||"#8a5cf6,#c084fc",
+ };
+@@ -1130,6 +1178,13 @@
+   hideAuthErr();
+ }
+ function applyAuthUser(user){
++  // Autre compte sur le même appareil : on n'expose pas les discussions locales du précédent.
++  const prevOwner=localStorage.getItem("L5_owner");
++  if(prevOwner&&prevOwner!==user.email){
++    ["L5_c","L5_h","L5_p"].forEach(k=>localStorage.removeItem(k));
++    ST.convs={cur:null,list:[]};ST.hist={};ST.pins=[];
++  }
++  localStorage.setItem("L5_owner",user.email);
+   ST.user=user.display_name||user.email.split("@")[0];ST.email=user.email;
+   localStorage.setItem("L5_u",ST.user);localStorage.setItem("L5_email",ST.email);
+ }
+@@ -1248,7 +1303,7 @@
+ function setInp(v){const f=document.getElementById("userInp");f.value=v;autoRsz();}
+ 
+ document.getElementById("sendBtn").onclick=()=>{
+-  if(RT.streamingConvs.has(ST.convs.cur))stopAll();else sendMsg();
++  if(RT.streamingConvs.has(ST.convs.cur)&&RT.greetingConv!==ST.convs.cur)stopAll();else sendMsg();
+ };
+ 
+ function newConv(){
+@@ -1305,14 +1360,12 @@
+     const pinned=ST.pins.includes(c.id),active=c.id===ST.convs.cur;
+     const msgs=ST.hist[c.id]||[];const prev=msgs.length?(msgs[msgs.length-1].content||"").slice(0,38)+"…":"";
+     const div=document.createElement("div");div.className="ci"+(active?" on":"");
+-    div.innerHTML=`<div class="ci-ico">${pinned?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>`:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`}</div><div class="ci-info"><div class="ci-title">${c.title}</div><div class="ci-prev">${prev}</div></div><div class="ci-more" style="display:none"></div>`;
++    div.innerHTML=`<div class="ci-ico">${pinned?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>`:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`}</div><div class="ci-info"><div class="ci-title">${escH(c.title)}</div><div class="ci-prev">${escH(prev)}</div></div><div class="ci-more"></div>`;
+     const moreBtn=div.querySelector(".ci-more");
+     moreBtn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`;
+     div.querySelector(".ci-info").onclick=()=>loadConv(c.id);
+     div.querySelector(".ci-ico").onclick=()=>loadConv(c.id);
+     moreBtn.onclick=e=>{e.stopPropagation();showCtx(c.id,e);};
+-    div.addEventListener("mouseenter",()=>moreBtn.style.display="flex");
+-    div.addEventListener("mouseleave",()=>moreBtn.style.display="none");
+     cl.appendChild(div);
+   });
+ }
+@@ -1477,7 +1530,7 @@
+ };
+ 
+ // ── ARTEFACTS ──
+-function escH(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
++function escH(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+ const LMETA={
+   html:{ico:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`,lbl:"Page web",col:"#f97316",ext:"html"},
+   css:{ico:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`,lbl:"Style CSS",col:"#38bdf8",ext:"css"},
+@@ -1509,7 +1562,7 @@
+   const body=document.createElement("div");body.className="art-pbody";
+   const prev=document.createElement("div");prev.className="art-prev";
+   if(["html",""].includes(art.lang)){
+-    const ifr=document.createElement("iframe");ifr.className="art-iframe";ifr.sandbox="allow-scripts allow-same-origin";ifr.srcdoc=art.code;prev.appendChild(ifr);
++    const ifr=document.createElement("iframe");ifr.className="art-iframe";ifr.sandbox="allow-scripts";ifr.referrerPolicy="no-referrer";ifr.srcdoc=art.code;prev.appendChild(ifr);
+   }else{const tx=document.createElement("div");tx.className="art-text";tx.textContent=art.code;prev.appendChild(tx);}
+   const raw=document.createElement("div");raw.className="art-raw";raw.innerHTML=`<pre>${escH(art.code)}</pre>`;
+   body.appendChild(prev);body.appendChild(raw);
+@@ -1699,7 +1752,7 @@
+ }
+ function mkAv(sp){
+   const av=document.createElement("div");av.className="aav"+(sp?" sp":"");
+-  av.innerHTML=`<svg viewBox="0 0 40 24" width="16" height="10"><use href="#luminaBrain" stroke="#c084fc" stroke-width="1.8" fill="none"/></svg>`;
++  av.innerHTML=`<img class="mini-logo" src="/icons/icon-192.png" alt="" width="28" height="28">`;
+   return av;
+ }
+ 
+@@ -1708,10 +1761,7 @@
+   if(!reasoning||!reasoning.trim())return null;
+   const panel=document.createElement("div");panel.className="reason-panel";
+   const head=document.createElement("div");head.className="reason-head";
+-  head.innerHTML=`<svg class="rchev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 6 15 12 9 18"/></svg><svg class="rbrain" viewBox="0 0 40 24" width="16" height="10"><use href="#luminaBrain" stroke="currentColor" stroke-width="1.8" fill="none"/></svg><span>Processus de réflexion</span><span class="rsteps">Analyse en cours</span>`;
+-  const steps=document.createElement("div");steps.className="reason-steps";
+-  for(let i=0;i<5;i++){const s=document.createElement("div");s.className="reason-step"+(i<2?" done":"");steps.appendChild(s);}
+-  head.appendChild(steps);
++  head.innerHTML=`<svg class="rchev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 6 15 12 9 18"/></svg><svg class="rbrain" viewBox="0 0 40 24" width="16" height="10"><use href="#luminaBrain" stroke="currentColor" stroke-width="1.8" fill="none"/></svg><span>Réflexion</span>`;
+   const body=document.createElement("div");body.className="reason-body";
+   const inner=document.createElement("div");inner.className="reason-body-inner";inner.textContent=reasoning.trim();
+   body.appendChild(inner);
+@@ -1792,7 +1842,7 @@
+ 
+   // Thinking indicator - style Claude
+   const stat=document.createElement("div");stat.className="ai-thinking";
+-  stat.innerHTML=`<svg class="ai-thinking-mark" viewBox="0 0 40 24" width="24" height="14"><use href="#luminaBrain" stroke="#a78bfa" stroke-width="1.8" fill="none"/></svg><span class="ai-thinking-label">Lumina réfléchit...</span>`;
++  stat.innerHTML=`<span class="think-ico"><img class="mini-logo" src="/icons/icon-192.png" alt=""></span><span class="ai-thinking-label">Lumina réfléchit...</span>`;
+   body.appendChild(stat);
+   row.appendChild(av);row.appendChild(body);g.appendChild(row);ca.appendChild(g);ca.scrollTop=ca.scrollHeight;
+ 
+@@ -1847,6 +1897,7 @@
+     body.appendChild(footer);
+   } else {acc=text;}
+ 
++  if(RT.greetingConv===targetConv&&RT.stopReqConvs.has(targetConv)){g.remove();return;}   // salutation interrompue : on ne garde pas un texte tronqué
+   ST.hist[targetConv].push({role:"assistant",content:acc,type:"text",reasoning:reasoning||null,sources:sources||[]});
+   RT.lastReply=acc;RT.lastAiG=g;save();renderConvList();
+   if(CFG.autoTTS&&!RT.stopReqConvs.has(targetConv)&&targetConv===ST.convs.cur)speakFull(acc);
+@@ -2039,24 +2090,53 @@
+ };
+ 
+ // ── BACKEND ──
+-async function callAPI(msg,convId,imageData=null){
++function resizeDataUrl(src,maxDim,quality){
++  // Réduit une image (côté client) : moins de data, pas de 413, et localStorage ne sature plus.
++  return new Promise(res=>{
++    const i=new Image();
++    i.onload=()=>{
++      const k=Math.min(1,maxDim/Math.max(i.width,i.height));
++      const w=Math.max(1,Math.round(i.width*k)),h=Math.max(1,Math.round(i.height*k));
++      const c=document.createElement("canvas");c.width=w;c.height=h;
++      c.getContext("2d").drawImage(i,0,0,w,h);
++      res(c.toDataURL("image/jpeg",quality));
++    };
++    i.onerror=()=>res(src);
++    i.src=src;
++  });
++}
++async function callAPI(msg,convId,imageData=null,regen=false){
+   const mdl=MODELS.find(m=>m.id===ST.mdl)||MODELS[0];
++  const fail=t=>({reply:t,reasoning:null,sources:[]});
+   try{
+-    const body={message:msg,model:mdl.model,temperature:.75,conv_id:convId||ST.convs.cur,use_web:!!CFG.web};
++    const body={message:msg,model:mdl.model,temperature:.75,conv_id:convId||ST.convs.cur,use_web:!!CFG.web,regen:!!regen};
+     if(imageData) body.image=imageData;
+     const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify(body)});
+-    if(r.status===401){forceReauth();return{reply:"Le serveur a redémarré et ta session a été perdue. Reconnecte-toi, ta conversation reste ici.",reasoning:null,sources:[]};}
+-    if(r.status===429)return{reply:"Tu envoies des messages trop vite, patiente une minute.",reasoning:null,sources:[]};
+-    if(!r.ok)return{reply:"Erreur serveur ("+r.status+"). Vérifie que Flask tourne sur le port 5005.",reasoning:null,sources:[]};
++    if(r.status===401){forceReauth();return fail("Ta session a expiré. Reconnecte-toi : tes discussions restent sur cet appareil.");}
++    if(r.status===429)return fail("Tu envoies des messages trop vite, patiente une minute.");
++    if(r.status===413||r.status===503||r.status===400){
++      let m=r.status===503?"Lumina est momentanément indisponible. Réessaie dans un instant.":"Requête refusée.";
++      try{const d=await r.json();if(d.error)m=d.error;else if(d.reply)m=d.reply;}catch(e){}
++      return fail(m);
++    }
++    if(!r.ok)return fail("Erreur serveur ("+r.status+"). Réessaie dans un instant.");
+     const d=await r.json();
+     return{reply:d.reply||d.response||d.text||"Pas de réponse.",reasoning:d.reasoning||null,sources:d.sources||[]};
+-  }catch(e){return{reply:"Impossible de joindre Lumina (port 5005). Lance ton serveur Flask.",reasoning:null,sources:[]};}
++  }catch(e){return fail("Impossible de joindre Lumina. Vérifie ta connexion.");}
+ }
+ 
+ // ── SEND ──
+ async function sendMsg(override,retry=false){
+   const ca=document.getElementById("chat");const f=document.getElementById("userInp");
+-  const msg=(override||f.value).trim();if(!msg||RT.streamingConvs.has(ST.convs.cur))return;
++  const msg=(override||f.value).trim();if(!msg)return;
++  if(RT.streamingConvs.has(ST.convs.cur)){
++    // La salutation d'accueil cède la place : sans ça, le premier message tapé pendant son animation était ignoré.
++    if(RT.greetingConv===ST.convs.cur){
++      RT.stopReqConvs.add(ST.convs.cur);
++      for(let i=0;i<30&&RT.streamingConvs.has(ST.convs.cur);i++)await new Promise(r=>setTimeout(r,50));
++    }
++    if(RT.streamingConvs.has(ST.convs.cur))return;
++  }
+   if(!navigator.onLine&&!override){RT.offlineQ=msg;document.getElementById("offlineB").style.display="block";toast("Hors ligne");return;}
+   // Capturé ici : si l'utilisateur bascule vers une autre conversation pendant
+   // que celle-ci génère encore, tout le reste de la fonction continue à
+@@ -2083,7 +2163,7 @@
+       if(/^(génère|genere|dessine|crée une image|génère une image)\s+/i.test(msg)){await genImg(msg.replace(/^(génère|genere|dessine|crée une image|génère une image)\s+/i,"").trim());return;}
+       if(/^(joue|génère une musique|compose|crée une musique)\s+/i.test(msg)){await playMusic(msg.replace(/^(joue|génère une musique|compose|crée une musique)\s+/i,"").trim());return;}
+     }
+-    const rep=await callAPI(msg,targetConv);
++    const rep=await callAPI(msg,targetConv,null,retry);
+     if(!RT.stopReqConvs.has(targetConv))await streamResp(rep.reply,targetConv,rep.reasoning,rep.sources);
+   }catch(e){
+     console.error("[sendMsg]",e);
+@@ -2215,7 +2295,7 @@
+       </button>
+ 
+       <div class="aud-info">
+-        <div class="aud-title">${name}</div>
++        <div class="aud-title">${escH(String(name))}</div>
+ 
+         <div class="aud-time-row">
+           <span id="audCurrent">0:00</span>
+@@ -2425,7 +2505,8 @@
+   const vid=document.getElementById("vpVideo");
+   const cv=document.createElement("canvas");cv.width=vid.videoWidth;cv.height=vid.videoHeight;
+   cv.getContext("2d").drawImage(vid,0,0);
+-  const dataUrl=cv.toDataURL("image/jpeg",.85);
++  const raw=cv.toDataURL("image/jpeg",.9);
++  const full=await resizeDataUrl(raw,1280,.8),dataUrl=await resizeDataUrl(raw,480,.6);
+   stopVision();
+   const ca=document.getElementById("chat");const we=WELCOME_EL;if(we&&we.parentNode===ca)we.remove();
+   const targetConv=ST.convs.cur;
+@@ -2433,7 +2514,7 @@
+   if(!ST.hist[targetConv])ST.hist[targetConv]=[];ST.hist[targetConv].push({role:"user",content:dataUrl,type:"img"});save();
+   RT.streamingConvs.add(targetConv);
+   try{
+-    const rep=await callAPI("Analyse cette image en détail. Décris ce que tu vois, les couleurs, les éléments, le contexte. Réponds en français.",targetConv,ev.target.result);
++    const rep=await callAPI("Analyse cette image en détail. Décris ce que tu vois, les couleurs, les éléments, le contexte. Réponds en français.",targetConv,full);
+     if(!RT.stopReqConvs.has(targetConv))await streamResp(rep.reply,targetConv,rep.reasoning,rep.sources);
+   }finally{fin(targetConv);}
+ }
+@@ -2480,13 +2561,14 @@
+ document.getElementById("imgInp").onchange=async e=>{
+   const file=e.target.files[0];if(!file)return;
+   const reader=new FileReader();reader.onload=async ev=>{
++    const full=await resizeDataUrl(ev.target.result,1280,.8),thumb=await resizeDataUrl(ev.target.result,480,.6);
+     const ca=document.getElementById("chat");const we=WELCOME_EL;if(we&&we.parentNode===ca)we.remove();
+     const targetConv=ST.convs.cur;
+-    const uw=document.createElement("div");uw.className="msg-u";const ub=document.createElement("div");ub.className="ubub";ub.innerHTML=`<img src="${ev.target.result}" style="max-width:170px;border-radius:9px;display:block;">`;uw.appendChild(ub);ca.appendChild(uw);ca.scrollTop=ca.scrollHeight;
+-    if(!ST.hist[targetConv])ST.hist[targetConv]=[];ST.hist[targetConv].push({role:"user",content:ev.target.result,type:"img"});save();
++    const uw=document.createElement("div");uw.className="msg-u";const ub=document.createElement("div");ub.className="ubub";ub.innerHTML=`<img src="${thumb}" style="max-width:170px;border-radius:9px;display:block;">`;uw.appendChild(ub);ca.appendChild(uw);ca.scrollTop=ca.scrollHeight;
++    if(!ST.hist[targetConv])ST.hist[targetConv]=[];ST.hist[targetConv].push({role:"user",content:thumb,type:"img"});save();
+     RT.streamingConvs.add(targetConv);
+     try{
+-      const rep=await callAPI("Analyse cette image en détail. Décris ce que tu vois, les couleurs, les éléments, le contexte. Réponds en français.",targetConv,ev.target.result);
++      const rep=await callAPI("Analyse cette image en détail. Décris ce que tu vois, les couleurs, les éléments, le contexte. Réponds en français.",targetConv,full);
+       if(!RT.stopReqConvs.has(targetConv))await streamResp(rep.reply,targetConv,rep.reasoning,rep.sources);
+     }finally{fin(targetConv);}
+   };reader.readAsDataURL(file);e.target.value="";
+@@ -2555,21 +2637,20 @@
+       const n=ST.user&&ST.user!=="vous"?ST.user:null;
+       const greet=n?`Bonjour ${n}. Je suis Lumina, ton assistant IA multimodal.\n\nJe peux générer des images, tracer des graphiques, t'aider en maths, physique, philosophie et toutes tes matières du BAC, jouer ou composer de la musique, écrire du code, analyser tes documents et bien plus encore.\n\nPar quoi on commence ?`:`Bonjour. Je suis Lumina, votre assistant IA multimodal.\n\nImages, graphiques, études BAC, code, musique, vision — tout est accessible. Que souhaitez-vous faire ?`;
+       const targetConv=ST.convs.cur;
+-      RT.streamingConvs.add(targetConv);await streamResp(greet,targetConv);fin(targetConv);
++      RT.greetingConv=targetConv;RT.streamingConvs.add(targetConv);await streamResp(greet,targetConv);RT.greetingConv=null;fin(targetConv);
+     },700);
+   }
+   updName();
+ }
+ 
+ // ── TERMS MODAL ──
+-document.getElementById("closeTerms").onclick=()=>document.getElementById("termsModal").classList.remove("show");
+-document.getElementById("closeReport").onclick=()=>document.getElementById("reportModal").classList.remove("show");
+-document.getElementById("submitReport").onclick=()=>{
++(document.getElementById("closeTerms")||{}).onclick=()=>document.getElementById("termsModal").classList.remove("show");
++(document.getElementById("closeReport")||{}).onclick=()=>document.getElementById("reportModal").classList.remove("show");
++(document.getElementById("submitReport")||{}).onclick=()=>{
+   const text=document.getElementById("reportText").value.trim();
+   const convId=document.getElementById("reportConvId").value;
+   if(!text){toast("Décrivez le problème");return;}
+-  sendFeedback("bug_report",{text,conversation_id:convId});
+-  toast("Signalement envoyé, merci !");
++  sendFeedback("bug_report",{text,conversation_id:convId}).then(ok=>toast(ok?"Signalement envoyé, merci !":"Échec de l'envoi, réessaie"));
+   document.getElementById("reportText").value="";
+   document.getElementById("reportModal").classList.remove("show");
+ };
+@@ -2585,74 +2666,20 @@
+ </script>
+ 
+ 
+-<!-- Conditions d'utilisation -->
+-<div class="modal" id="termsModal">
+-  <div class="modal-box" style="max-width:480px;max-height:80dvh;overflow-y:auto;">
+-    <div class="modal-t">Conditions d'utilisation</div>
+-    <div style="font-size:.8rem;line-height:1.7;color:var(--txt2);white-space:normal;">
+-      <p style="margin-bottom:12px;font-weight:600;color:var(--txt);">Lumina est fourni à des fins d'assistance, d'information, d'apprentissage et de productivité.</p>
+-      <p style="margin-bottom:12px;">L'utilisateur reste seul responsable de l'usage qu'il fait du service.</p>
+-      <p style="margin-bottom:12px;font-weight:600;color:var(--txt);">Il est interdit d'utiliser Lumina pour :</p>
+-      <ul style="margin-bottom:12px;padding-left:20px;color:var(--txt2);">
+-        <li>des activités illégales,</li>
+-        <li>le harcèlement,</li>
+-        <li>la fraude,</li>
+-        <li>la diffusion de logiciels malveillants,</li>
+-        <li>l'atteinte à la vie privée d'autrui.</li>
+-      </ul>
+-      <p style="margin-bottom:12px;">Les réponses générées par Lumina sont produites automatiquement par un système d'intelligence artificielle et peuvent contenir des erreurs. L'éditeur ne garantit pas l'exactitude absolue des informations fournies et ne peut être tenu responsable des dommages résultant de leur utilisation.</p>
+-      <p style="margin-bottom:12px;">L'utilisation du service est réservée aux personnes âgées d'au moins 13 ans ou avec l'autorisation d'un parent ou tuteur légal.</p>
+-      <p style="margin-bottom:12px;color:var(--txt3);font-size:.72rem;">Créé par Issa Amakendé Abdoulaye Koné</p>
+-    </div>
+-    <div class="modal-btns">
+-      <button class="mbtn s" id="closeTerms">Fermer</button>
+-    </div>
+-  </div>
+-</div>
+-
+-<!-- Modal Signaler un problème -->
+-<div class="modal" id="reportModal">
+-  <div class="modal-box" style="max-width:420px;">
+-    <div class="modal-t">Signaler un problème</div>
+-    <textarea class="modal-inp" id="reportText" placeholder="Décrivez le problème rencontré..." rows="4" style="min-height:80px;resize:vertical;margin-bottom:8px;"></textarea>
+-    <input class="modal-inp" id="reportConvId" type="hidden" value="">
+-    <div class="modal-btns">
+-      <button class="mbtn s" id="closeReport">Annuler</button>
+-      <button class="mbtn p" id="submitReport">Envoyer</button>
+-    </div>
+-  </div>
+-</div>
+-
+-<!-- Analytics endpoint hidden config -->
+ <script>
+-const ANALYTICS_URL = ""; // L'URL de votre backend analytics sera définie lors du déploiement
+-function sendFeedback(type, details) {
+-  const data = {
+-    type: type,
+-    conversation_id: ST.convs.cur,
+-    message_id: details.msgId || null,
+-    timestamp: new Date().toISOString(),
+-    user_email: ST.email || null,
+-    user_agent: navigator.userAgent,
+-    details: details
+-  };
+-  // Envoi vers le backend analytics (à configurer avec votre URL)
+-  if (ANALYTICS_URL) {
+-    fetch(ANALYTICS_URL + "/feedback", {
+-      method: "POST",
+-      headers: {"Content-Type": "application/json"},
+-      body: JSON.stringify(data)
+-    }).catch(e => console.log("[Analytics] Erreur envoi:", e));
+-  }
+-  // Stockage local en fallback
+-  try {
+-    const reports = JSON.parse(localStorage.getItem("L5_reports") || "[]");
+-    reports.push(data);
+-    if (reports.length > 100) reports.shift();
+-    localStorage.setItem("L5_reports", JSON.stringify(reports));
+-  } catch(e) {}
+-  console.log("[Analytics] Feedback envoyé:", type, details);
++// Retour utilisateur : envoyé au serveur (table feedback) pour like / dislike / signalement.
++// copy et share ne quittent pas l'appareil.
++async function sendFeedback(type, details){
++  details=details||{};
++  if(!["like","dislike","bug_report"].includes(type)||!ST.token)return false;
++  try{
++    const r=await fetch(`${BASE}/feedback`,{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},
++      body:JSON.stringify({type,conv_id:details.conversation_id||ST.convs.cur,message_id:details.msgId||null,text:details.text||""})});
++    return r.ok;
++  }catch(e){return false;}
+ }
+ </script>
++<script src="/ui7.js"></script>
++<script src="/live.js"></script>
+ </body>
+ </html>
+##### fichiers supprimés de la v7 : lumina.js (orphelin), fix_vision.py (patch déjà appliqué), index.html/manifest.json/sw.js racine (déplacés dans www/)
+##### fichiers nouveaux : www/v7.css www/ui7.js www/live.js www/icons/* tests/ scripts/ docs/

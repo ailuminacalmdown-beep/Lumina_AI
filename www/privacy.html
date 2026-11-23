@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Politique de confidentialité — Lumina</title>
+<meta name="robots" content="index,follow">
+<style>
+:root{color-scheme:dark light;--bg:#0d0d0d;--tx:#e7e7e7;--mu:#9ca3af;--ac:#c084fc;--bd:rgba(255,255,255,.12)}
+@media (prefers-color-scheme:light){:root{--bg:#fff;--tx:#1a1a1a;--mu:#5b6270;--ac:#7c3aed;--bd:rgba(0,0,0,.12)}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.7 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:28px 20px 64px}
+h1{font-size:26px;line-height:1.25;margin:0 0 6px}h2{font-size:19px;margin:30px 0 8px}
+p,li{color:var(--tx)}.maj{color:var(--mu);font-size:14px;margin:0 0 18px}li{margin:6px 0}ul{padding-left:20px}
+a{color:var(--ac)}code{background:var(--bd);border-radius:5px;padding:1px 5px;font-size:.92em}
+.note{border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:18px 0;color:var(--mu);font-size:15px}
+</style></head><body><main>
+<h1>Politique de confidentialité</h1>
+<p class="maj">Lumina AI · dernière mise à jour : 21 novembre 2026 · <a href="/terms">Conditions d'utilisation</a></p>
+
+<p>Cette politique explique quelles données Lumina traite, pourquoi, avec qui elles sont partagées et comment les supprimer. Elle décrit le fonctionnement réel de l'application à la date indiquée ci-dessus.</p>
+
+<h2>1. Qui est responsable</h2>
+<p>Lumina AI est éditée par Issa Amakendé Abdoulaye Koné (projet Æon), au Mali.<br>
+Contact : <a href="mailto:ai.lumina.calmdown@gmail.com">ai.lumina.calmdown@gmail.com</a> · téléphone : <a href="tel:+22393770325">+223 93 77 03 25</a></p>
+
+<h2>2. Données que nous traitons</h2>
+<ul>
+<li><b>Compte</b> : adresse email, nom d'affichage, mot de passe (enregistré sous forme chiffrée irréversible, jamais en clair) et jetons de connexion (valables 30 jours).</li>
+<li><b>Conversations</b> : le texte de vos échanges avec Lumina est conservé sur nos serveurs (les 60 derniers échanges de chaque discussion) pour que Lumina suive la conversation.</li>
+<li><b>Mémoire</b> : les informations que vous demandez à Lumina de retenir.</li>
+<li><b>Retours</b> : « j'aime », « je n'aime pas » et signalements de problème, avec le texte que vous envoyez.</li>
+<li><b>Utilisation</b> : des compteurs journaliers (messages, photos analysées, recherches web) qui servent à appliquer les limites des plans.</li>
+<li><b>Abonnement</b> : votre plan et ses dates. Les actions d'administration (activation ou retrait d'un abonnement) sont journalisées avec votre identifiant interne.</li>
+<li><b>Données techniques</b> : adresse IP et journaux traités par l'hébergeur et utilisés pour la sécurité et la limitation des abus (limites de tentatives et de débit).</li>
+<li><b>Sur votre appareil</b> : vos conversations, artéfacts, projets et réglages sont aussi enregistrés dans le stockage local de votre navigateur ou de l'application.</li>
+</ul>
+
+<h2>3. Photos, fichiers, caméra et micro</h2>
+<ul>
+<li>Une photo ou un fichier texte que vous joignez est envoyé à notre serveur puis au fournisseur d'IA pour être analysé. Lumina ne conserve pas vos photos sur son serveur.</li>
+<li>Le mode Live envoie des images de la caméra et des extraits audio à notre serveur pour la transcription et la réponse. Lumina ne les conserve pas.</li>
+<li>La caméra et le micro ne s'activent qu'avec votre autorisation, que vous pouvez retirer à tout moment dans les réglages de votre appareil.</li>
+</ul>
+
+<h2>4. Avec qui les données sont partagées</h2>
+<p>Lumina n'entraîne pas de modèle avec vos conversations, ne vend pas vos données et ne les utilise pas pour de la publicité. Pour fonctionner, elle fait appel à des prestataires, qui appliquent leurs propres politiques :</p>
+<ul>
+<li><b>Groq</b> : fournisseur des modèles d'IA. Vos messages, le contexte de la discussion et vos images lui sont envoyés pour générer les réponses.</li>
+<li><b>Render</b> (hébergement du serveur) et, selon le déploiement, <b>Neon</b> (base de données PostgreSQL) : ils hébergent les données de la section 2.</li>
+<li><b>Recherche web</b> (si vous l'activez) : le texte de votre question est envoyé à DuckDuckGo, Wikipédia et, lorsqu'il est configuré, à Tavily. Lumina peut ensuite télécharger des pages publiques correspondant aux résultats ou aux liens que vous écrivez, pour les lire avant de répondre.</li>
+<li><b>Génération d'images</b> (si vous l'utilisez) : votre description est envoyée à Pollinations depuis votre navigateur.</li>
+<li><b>Musique</b> (si vous l'utilisez) : votre recherche est envoyée à Jamendo depuis votre navigateur.</li>
+<li><b>Polices</b> : votre navigateur charge des polices depuis Google Fonts, ce qui expose votre adresse IP à Google.</li>
+</ul>
+<p>Ces prestataires et leurs serveurs peuvent se trouver hors du Mali, par exemple aux États-Unis.</p>
+
+<h2>5. Durées de conservation</h2>
+<ul>
+<li>Conversations, mémoire et retours : tant que votre compte existe, ou jusqu'à ce que vous les supprimiez.</li>
+<li>Supprimer une discussion dans l'application demande aussi au serveur d'effacer son historique.</li>
+<li>Connexions : une session expire au bout de 30 jours.</li>
+<li>Réponses mises en cache : en mémoire du serveur, au plus une heure.</li>
+<li>Les prestataires d'hébergement peuvent conserver des sauvegardes temporaires selon leurs propres règles.</li>
+</ul>
+
+<h2>6. Vos droits</h2>
+<ul>
+<li><b>Supprimer votre compte</b> : dans Paramètres, « Supprimer mon compte ». Cela efface définitivement votre compte, vos conversations, votre mémoire, vos retours, vos sessions et vos abonnements.</li>
+<li><b>Supprimer des discussions</b> : depuis le menu de chaque discussion, ou « Effacer toutes les conversations » dans les Paramètres.</li>
+<li><b>Accès, copie, correction</b> : écrivez-nous à <a href="mailto:ai.lumina.calmdown@gmail.com">ai.lumina.calmdown@gmail.com</a> ; nous répondons dans un délai raisonnable. Selon votre pays, vous pouvez disposer d'autres droits (opposition, portabilité) que vous pouvez exercer par la même voie.</li>
+</ul>
+
+<h2>7. Sécurité</h2>
+<p>Les échanges se font en HTTPS en production, les mots de passe sont chiffrés de manière irréversible, les tentatives de connexion sont limitées et chaque compte n'accède qu'à ses propres données. Aucun système n'est parfaitement sûr : choisissez un mot de passe unique et solide.</p>
+
+<h2>8. Enfants</h2>
+<p>Lumina n'est pas destinée aux enfants de moins de 13 ans.</p>
+
+<h2>9. Modifications</h2>
+<p>Nous mettrons cette page à jour quand le fonctionnement de Lumina change (par exemple à l'arrivée des paiements) et indiquerons la date de mise à jour en haut.</p>
+
+</main></body></html>

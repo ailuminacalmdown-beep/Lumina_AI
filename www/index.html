@@ -6,12 +6,13 @@
 <meta name="theme-color" content="#171717">
 <title>Lumina</title>
 <link rel="manifest" href="/manifest.json">
-<link rel="icon" href="/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Lumina">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0d0d0d;--bg-elevated:#141414;--bg-secondary:#1a1a1a;--surface:#1e1e1e;--surface-hover:#262626;
@@ -704,6 +705,8 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
   .ubub{max-width:90%;font-size:14px;}
 }
 </style>
+<link rel="stylesheet" href="/v7.css">
+<link rel="stylesheet" href="/v8.css">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -729,7 +732,7 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
 <div class="auth-scr hide" id="authScr" data-mode="login">
   <div class="auth-box">
     <div class="auth-logo">
-      <svg width="40" height="25" viewBox="0 0 270 170"><use href="#luminaBrain" fill="url(#brainGrad)"/></svg>
+      <div class="lum-logo" role="img" aria-label="Lumina" style="--lw:92px"><div class="lum-aura"></div><div class="lum-tilt"><div class="lum-card"><img src="/icons/icon-512.png" alt="" draggable="false"><span class="lum-shine"></span><i class="lum-glint g1"></i><i class="lum-glint g2"></i><i class="lum-glint g3"></i></div><div class="lum-reflect"><img src="/icons/icon-512.png" alt="" draggable="false"></div></div><i class="lum-sp s1"></i><i class="lum-sp s2"></i><i class="lum-sp s3"></i><i class="lum-sp s4"></i><i class="lum-sp s5"></i></div>
       <span class="logo-name">Lumina</span>
     </div>
     <div class="auth-tabs">
@@ -755,7 +758,7 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
     </button>
     <div class="logo-w">
-      <svg width="26" height="16" viewBox="0 0 40 24" fill="none"><use href="#luminaBrain" stroke="#c084fc" stroke-width="1.8"/></svg>
+      <img class="mini-logo" src="/icons/icon-192.png" alt="" width="30" height="30" style="--s:30px">
       <span class="logo-name">Lumina</span>
     </div>
   </div>
@@ -763,10 +766,7 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
     <div class="conv-name" id="convName">Nouvelle discussion</div>
   </div>
   <div class="h-right">
-    <div class="model-pill" id="modelPill">
-      <div class="m-dot"></div>
-      <span id="modelLabel">Flash</span>
-    </div>
+    <button class="hbtn" id="newConvTop" aria-label="Nouvelle discussion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
     <button class="hbtn" id="srchBtn" aria-label="Rechercher">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
     </button>
@@ -788,7 +788,7 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
 <aside class="sidebar" id="sidebar">
   <div class="sb-head">
     <div class="sb-logo">
-      <svg width="22" height="14" viewBox="0 0 270 170"><use href="#luminaBrain" fill="url(#brainGrad)"/></svg>
+      <img class="mini-logo" src="/icons/icon-192.png" alt="" width="26" height="26" style="--s:26px">
       <span class="sb-lname">Lumina</span>
     </div>
     <button class="sb-x" id="closeSb">
@@ -806,17 +806,15 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
   <div class="sb-sec">Discussions</div>
   <div class="conv-list" id="convList"></div>
   <div class="sb-nav">
-    <div class="sb-nav-item" id="navProjects">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-      Projets
-    </div>
-    <div class="sb-nav-item" id="navArtifacts">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-      Artéfacts
-    </div>
     <div class="sb-nav-item" id="navStg">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Paramètres
+    </div>
+    <div class="sb-nav-item" id="navTerms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></svg>
+      Conditions d'utilisation
+    </div>
+    <div class="sb-nav-item" id="navReport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+      Signaler un problème
     </div>
   </div>
   <div class="sb-foot">
@@ -904,7 +902,7 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
         <div class="stgl" id="stglWeb"></div>
       </div>
       <div class="s-item">
-        <div class="s-il"><div class="s-ico" style="background:rgba(251,191,36,.12)"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div><div><div class="s-lbl">Vision</div><div class="s-val">Analyse d'images</div></div></div>
+        <div class="s-il"><div class="s-ico" style="background:rgba(251,191,36,.12)"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div><div><div class="s-lbl">Live : commentaires spontanés</div><div class="s-val">L'IA parle d'elle-même quand la caméra est active</div></div></div>
         <div class="stgl on" id="stglVision"></div>
       </div>
     </div>
@@ -913,6 +911,10 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
       <button class="neutral-btn" id="logoutBtn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         Se déconnecter
+      </button>
+      <button class="danger-btn" id="deleteAccBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        Supprimer mon compte
       </button>
     </div>
     <div class="s-sec">
@@ -929,7 +931,7 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
           <svg width="30" height="18" viewBox="0 0 40 24" fill="none" style="flex-shrink:0">
             <use href="#luminaBrain" stroke="#a78bfa" stroke-width="1.8"/>
           </svg>
-          <div><div class="s-lbl">Lumina AI v5.0</div><div class="s-val">Issa Amakendé Abdoulaye Koné · Mali</div></div>
+          <div><div class="s-lbl">Lumina AI v7.0</div><div class="s-val">Issa Amakendé Abdoulaye Koné · Mali</div></div>
         </div>
         <span class="s-badge">STABLE</span>
       </div>
@@ -939,9 +941,7 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
 
 <main class="chat" id="chat">
   <div class="welcome" id="welcome">
-    <div class="wlgo">
-      <svg width="64" height="38" viewBox="0 0 40 24" fill="none"><use href="#luminaBrain" stroke="#c084fc" stroke-width="1.8"/></svg>
-    </div>
+    <div class="lum-logo" role="img" aria-label="Lumina" style="--lw:132px"><div class="lum-aura"></div><div class="lum-tilt"><div class="lum-card"><img src="/icons/icon-512.png" alt="" draggable="false"><span class="lum-shine"></span><i class="lum-glint g1"></i><i class="lum-glint g2"></i><i class="lum-glint g3"></i></div><div class="lum-reflect"><img src="/icons/icon-512.png" alt="" draggable="false"></div></div><i class="lum-sp s1"></i><i class="lum-sp s2"></i><i class="lum-sp s3"></i><i class="lum-sp s4"></i><i class="lum-sp s5"></i></div>
     <div class="wtitle" id="wtitle">Comment puis-je vous aider aujourd'hui ?</div>
     <div class="wsub">Je suis Lumina, votre assistant IA multimodal. Posez-moi une question, générez une image, écrivez du code, ou explorez vos idées.</div>
     <div class="wchips">
@@ -1036,6 +1036,10 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
     <span class="pm-tlbl">Lecture automatique</span>
     <div class="tgl" id="pmTTSTgl"></div>
   </div>
+  <div class="pm-trow" id="pmGestures">
+    <div class="pm-tico" style="background:rgba(251,191,36,.1)"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-5.9-2.4L3 16a2 2 0 0 1 3-2.6L8 15"/></svg></div>
+    <span class="pm-tlbl">Gestes (expérimental)</span>
+  </div>
   <div class="pm-div"></div>
   <div class="pm-sec">Paramètres rapides</div>
   <div class="pm-trow" id="pmOpenStg">
@@ -1045,22 +1049,18 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
   </div>
 </div>
 
-<div style="background:var(--bg);border-top:1px solid var(--border);display:flex;justify-content:center;">
-<div class="input-wrap">
-  <button class="plus-btn" id="plusBtn" aria-label="Ajouter">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-  </button>
-  <textarea class="inp" id="userInp" placeholder="Message Lumina..." rows="1" autocomplete="off" spellcheck="true"></textarea>
-  <div class="inp-acts">
-    <button class="ibtn" id="voiceBtn" aria-label="Microphone">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
-    </button>
-    <button class="ibtn" id="ttsBtn" aria-label="Lecture vocale">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-    </button>
-    <button class="send-btn" id="sendBtn" aria-label="Envoyer">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-    </button>
+<div class="cmp-wrap">
+<div class="cmp" id="cmp">
+  <div class="cmp-att" id="cmpAtt"></div>
+  <textarea class="inp" id="userInp" placeholder="Message Lumina" rows="1" autocomplete="off" spellcheck="true"></textarea>
+  <div class="cmp-row">
+    <button class="plus-btn" id="plusBtn" aria-label="Ajouter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    <div class="model-chip" id="modelPill" role="button" tabindex="0" aria-label="Choisir le modèle"><span id="modelLabel">Flash</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+    <span class="cmp-grow"></span>
+    <button class="ibtn" id="ttsBtn" aria-label="Lecture vocale"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></button>
+    <button class="ibtn" id="voiceBtn" aria-label="Microphone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg></button>
+    <button class="ibtn" id="liveBtn" aria-label="Mode Live (caméra et voix)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></button>
+    <button class="send-btn" id="sendBtn" aria-label="Envoyer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button>
   </div>
 </div>
 </div>
@@ -1070,6 +1070,45 @@ body{background:var(--bg);font-family:var(--font-sans);color:var(--text);display
 <input type="file" id="imgInp" accept="image/*" style="display:none">
 <input type="file" id="audInp" accept="audio/*" multiple style="display:none">
 <input type="file" id="fileInp" accept="*/*" style="display:none">
+
+<!-- Conditions d'utilisation -->
+<div class="modal" id="termsModal">
+  <div class="modal-box" style="max-width:480px;max-height:80dvh;overflow-y:auto;">
+    <div class="modal-t">Conditions d'utilisation</div>
+    <div style="font-size:.8rem;line-height:1.7;color:var(--txt2);white-space:normal;">
+      <p style="margin-bottom:12px;font-weight:600;color:var(--txt);">Lumina est fourni à des fins d'assistance, d'information, d'apprentissage et de productivité.</p>
+      <p style="margin-bottom:12px;">L'utilisateur reste seul responsable de l'usage qu'il fait du service.</p>
+      <p style="margin-bottom:12px;font-weight:600;color:var(--txt);">Il est interdit d'utiliser Lumina pour :</p>
+      <ul style="margin-bottom:12px;padding-left:20px;color:var(--txt2);">
+        <li>des activités illégales,</li>
+        <li>le harcèlement,</li>
+        <li>la fraude,</li>
+        <li>la diffusion de logiciels malveillants,</li>
+        <li>l'atteinte à la vie privée d'autrui.</li>
+      </ul>
+      <p style="margin-bottom:12px;">Les réponses générées par Lumina sont produites automatiquement par un système d'intelligence artificielle et peuvent contenir des erreurs. L'éditeur ne garantit pas l'exactitude absolue des informations fournies et ne peut être tenu responsable des dommages résultant de leur utilisation.</p>
+      <p style="margin-bottom:12px;">L'utilisation du service est réservée aux personnes âgées d'au moins 13 ans ou avec l'autorisation d'un parent ou tuteur légal.</p>
+      <p style="margin-bottom:12px;color:var(--txt3);font-size:.72rem;">Créé par Issa Amakendé Abdoulaye Koné</p>
+    </div>
+    <div class="modal-btns">
+      <button class="mbtn s" id="closeTerms">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Signaler un problème -->
+<div class="modal" id="reportModal">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-t">Signaler un problème</div>
+    <textarea class="modal-inp" id="reportText" placeholder="Décrivez le problème rencontré..." rows="4" style="min-height:80px;resize:vertical;margin-bottom:8px;"></textarea>
+    <input class="modal-inp" id="reportConvId" type="hidden" value="">
+    <div class="modal-btns">
+      <button class="mbtn s" id="closeReport">Annuler</button>
+      <button class="mbtn p" id="submitReport">Envoyer</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
 const WELCOME_EL=document.getElementById("welcome");
@@ -1099,7 +1138,7 @@ let CFG = {
   theme: localStorage.getItem("L5_theme")||"dark",
   autoTTS: localStorage.getItem("L5_tts")==="true",
   web: localStorage.getItem("L5_web")==="true",
-  vision: true,
+  vision: localStorage.getItem("L5_vision")!=="false",
   fs: parseInt(localStorage.getItem("L5_fs")||"100"),
   acc: localStorage.getItem("L5_acc")||"#8a5cf6,#c084fc",
 };
@@ -1130,6 +1169,13 @@ function setAuthMode(mode){
   hideAuthErr();
 }
 function applyAuthUser(user){
+  // Autre compte sur le même appareil : on n'expose pas les discussions locales du précédent.
+  const prevOwner=localStorage.getItem("L5_owner");
+  if(prevOwner&&prevOwner!==user.email){
+    ["L5_c","L5_h","L5_p"].forEach(k=>localStorage.removeItem(k));
+    ST.convs={cur:null,list:[]};ST.hist={};ST.pins=[];
+  }
+  localStorage.setItem("L5_owner",user.email);
   ST.user=user.display_name||user.email.split("@")[0];ST.email=user.email;
   localStorage.setItem("L5_u",ST.user);localStorage.setItem("L5_email",ST.email);
 }
@@ -1248,7 +1294,7 @@ function autoRsz(){const f=document.getElementById("userInp");f.style.height="au
 function setInp(v){const f=document.getElementById("userInp");f.value=v;autoRsz();}
 
 document.getElementById("sendBtn").onclick=()=>{
-  if(RT.streamingConvs.has(ST.convs.cur))stopAll();else sendMsg();
+  if(RT.streamingConvs.has(ST.convs.cur)&&RT.greetingConv!==ST.convs.cur)stopAll();else sendMsg();
 };
 
 function newConv(){
@@ -1305,14 +1351,12 @@ function renderConvList(){
     const pinned=ST.pins.includes(c.id),active=c.id===ST.convs.cur;
     const msgs=ST.hist[c.id]||[];const prev=msgs.length?(msgs[msgs.length-1].content||"").slice(0,38)+"…":"";
     const div=document.createElement("div");div.className="ci"+(active?" on":"");
-    div.innerHTML=`<div class="ci-ico">${pinned?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>`:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`}</div><div class="ci-info"><div class="ci-title">${c.title}</div><div class="ci-prev">${prev}</div></div><div class="ci-more" style="display:none"></div>`;
+    div.innerHTML=`<div class="ci-ico">${pinned?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>`:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`}</div><div class="ci-info"><div class="ci-title">${escH(c.title)}</div><div class="ci-prev">${escH(prev)}</div></div><div class="ci-more"></div>`;
     const moreBtn=div.querySelector(".ci-more");
     moreBtn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`;
     div.querySelector(".ci-info").onclick=()=>loadConv(c.id);
     div.querySelector(".ci-ico").onclick=()=>loadConv(c.id);
     moreBtn.onclick=e=>{e.stopPropagation();showCtx(c.id,e);};
-    div.addEventListener("mouseenter",()=>moreBtn.style.display="flex");
-    div.addEventListener("mouseleave",()=>moreBtn.style.display="none");
     cl.appendChild(div);
   });
 }
@@ -1477,7 +1521,7 @@ document.getElementById("clearAllBtn").onclick=()=>{
 };
 
 // ── ARTEFACTS ──
-function escH(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function escH(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
 const LMETA={
   html:{ico:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`,lbl:"Page web",col:"#f97316",ext:"html"},
   css:{ico:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`,lbl:"Style CSS",col:"#38bdf8",ext:"css"},
@@ -1509,7 +1553,7 @@ function openArt(id){
   const body=document.createElement("div");body.className="art-pbody";
   const prev=document.createElement("div");prev.className="art-prev";
   if(["html",""].includes(art.lang)){
-    const ifr=document.createElement("iframe");ifr.className="art-iframe";ifr.sandbox="allow-scripts allow-same-origin";ifr.srcdoc=art.code;prev.appendChild(ifr);
+    const ifr=document.createElement("iframe");ifr.className="art-iframe";ifr.sandbox="allow-scripts";ifr.referrerPolicy="no-referrer";ifr.srcdoc=art.code;prev.appendChild(ifr);
   }else{const tx=document.createElement("div");tx.className="art-text";tx.textContent=art.code;prev.appendChild(tx);}
   const raw=document.createElement("div");raw.className="art-raw";raw.innerHTML=`<pre>${escH(art.code)}</pre>`;
   body.appendChild(prev);body.appendChild(raw);
@@ -1699,7 +1743,7 @@ function wrapAi(content){
 }
 function mkAv(sp){
   const av=document.createElement("div");av.className="aav"+(sp?" sp":"");
-  av.innerHTML=`<svg viewBox="0 0 40 24" width="16" height="10"><use href="#luminaBrain" stroke="#c084fc" stroke-width="1.8" fill="none"/></svg>`;
+  av.innerHTML=`<img class="mini-logo" src="/icons/icon-192.png" alt="" width="28" height="28">`;
   return av;
 }
 
@@ -1708,10 +1752,7 @@ function buildReasonPanel(reasoning){
   if(!reasoning||!reasoning.trim())return null;
   const panel=document.createElement("div");panel.className="reason-panel";
   const head=document.createElement("div");head.className="reason-head";
-  head.innerHTML=`<svg class="rchev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 6 15 12 9 18"/></svg><svg class="rbrain" viewBox="0 0 40 24" width="16" height="10"><use href="#luminaBrain" stroke="currentColor" stroke-width="1.8" fill="none"/></svg><span>Processus de réflexion</span><span class="rsteps">Analyse en cours</span>`;
-  const steps=document.createElement("div");steps.className="reason-steps";
-  for(let i=0;i<5;i++){const s=document.createElement("div");s.className="reason-step"+(i<2?" done":"");steps.appendChild(s);}
-  head.appendChild(steps);
+  head.innerHTML=`<svg class="rchev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 6 15 12 9 18"/></svg><svg class="rbrain" viewBox="0 0 40 24" width="16" height="10"><use href="#luminaBrain" stroke="currentColor" stroke-width="1.8" fill="none"/></svg><span>Réflexion</span>`;
   const body=document.createElement("div");body.className="reason-body";
   const inner=document.createElement("div");inner.className="reason-body-inner";inner.textContent=reasoning.trim();
   body.appendChild(inner);
@@ -1792,7 +1833,7 @@ async function streamResp(text,targetConv,reasoning,sources){
 
   // Thinking indicator - style Claude
   const stat=document.createElement("div");stat.className="ai-thinking";
-  stat.innerHTML=`<svg class="ai-thinking-mark" viewBox="0 0 40 24" width="24" height="14"><use href="#luminaBrain" stroke="#a78bfa" stroke-width="1.8" fill="none"/></svg><span class="ai-thinking-label">Lumina réfléchit...</span>`;
+  stat.innerHTML=`<span class="think-ico"><img class="mini-logo" src="/icons/icon-192.png" alt=""></span><span class="ai-thinking-label">Lumina réfléchit...</span>`;
   body.appendChild(stat);
   row.appendChild(av);row.appendChild(body);g.appendChild(row);ca.appendChild(g);ca.scrollTop=ca.scrollHeight;
 
@@ -1847,6 +1888,7 @@ async function streamResp(text,targetConv,reasoning,sources){
     body.appendChild(footer);
   } else {acc=text;}
 
+  if(RT.greetingConv===targetConv&&RT.stopReqConvs.has(targetConv)){g.remove();return;}   // salutation interrompue : on ne garde pas un texte tronqué
   ST.hist[targetConv].push({role:"assistant",content:acc,type:"text",reasoning:reasoning||null,sources:sources||[]});
   RT.lastReply=acc;RT.lastAiG=g;save();renderConvList();
   if(CFG.autoTTS&&!RT.stopReqConvs.has(targetConv)&&targetConv===ST.convs.cur)speakFull(acc);
@@ -2039,24 +2081,53 @@ document.getElementById("voiceBtn").onclick=()=>{
 };
 
 // ── BACKEND ──
-async function callAPI(msg,convId,imageData=null){
+function resizeDataUrl(src,maxDim,quality){
+  // Réduit une image (côté client) : moins de data, pas de 413, et localStorage ne sature plus.
+  return new Promise(res=>{
+    const i=new Image();
+    i.onload=()=>{
+      const k=Math.min(1,maxDim/Math.max(i.width,i.height));
+      const w=Math.max(1,Math.round(i.width*k)),h=Math.max(1,Math.round(i.height*k));
+      const c=document.createElement("canvas");c.width=w;c.height=h;
+      c.getContext("2d").drawImage(i,0,0,w,h);
+      res(c.toDataURL("image/jpeg",quality));
+    };
+    i.onerror=()=>res(src);
+    i.src=src;
+  });
+}
+async function callAPI(msg,convId,imageData=null,regen=false){
   const mdl=MODELS.find(m=>m.id===ST.mdl)||MODELS[0];
+  const fail=t=>({reply:t,reasoning:null,sources:[]});
   try{
-    const body={message:msg,model:mdl.model,temperature:.75,conv_id:convId||ST.convs.cur,use_web:!!CFG.web};
+    const body={message:msg,model:mdl.model,temperature:.75,conv_id:convId||ST.convs.cur,use_web:!!CFG.web,regen:!!regen};
     if(imageData) body.image=imageData;
     const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify(body)});
-    if(r.status===401){forceReauth();return{reply:"Le serveur a redémarré et ta session a été perdue. Reconnecte-toi, ta conversation reste ici.",reasoning:null,sources:[]};}
-    if(r.status===429)return{reply:"Tu envoies des messages trop vite, patiente une minute.",reasoning:null,sources:[]};
-    if(!r.ok)return{reply:"Erreur serveur ("+r.status+"). Vérifie que Flask tourne sur le port 5005.",reasoning:null,sources:[]};
+    if(r.status===401){forceReauth();return fail("Ta session a expiré. Reconnecte-toi : tes discussions restent sur cet appareil.");}
+    if(r.status===429)return fail("Tu envoies des messages trop vite, patiente une minute.");
+    if(r.status===413||r.status===503||r.status===400){
+      let m=r.status===503?"Lumina est momentanément indisponible. Réessaie dans un instant.":"Requête refusée.";
+      try{const d=await r.json();if(d.error)m=d.error;else if(d.reply)m=d.reply;}catch(e){}
+      return fail(m);
+    }
+    if(!r.ok)return fail("Erreur serveur ("+r.status+"). Réessaie dans un instant.");
     const d=await r.json();
     return{reply:d.reply||d.response||d.text||"Pas de réponse.",reasoning:d.reasoning||null,sources:d.sources||[]};
-  }catch(e){return{reply:"Impossible de joindre Lumina (port 5005). Lance ton serveur Flask.",reasoning:null,sources:[]};}
+  }catch(e){return fail("Impossible de joindre Lumina. Vérifie ta connexion.");}
 }
 
 // ── SEND ──
 async function sendMsg(override,retry=false){
   const ca=document.getElementById("chat");const f=document.getElementById("userInp");
-  const msg=(override||f.value).trim();if(!msg||RT.streamingConvs.has(ST.convs.cur))return;
+  const msg=(override||f.value).trim();if(!msg)return;
+  if(RT.streamingConvs.has(ST.convs.cur)){
+    // La salutation d'accueil cède la place : sans ça, le premier message tapé pendant son animation était ignoré.
+    if(RT.greetingConv===ST.convs.cur){
+      RT.stopReqConvs.add(ST.convs.cur);
+      for(let i=0;i<30&&RT.streamingConvs.has(ST.convs.cur);i++)await new Promise(r=>setTimeout(r,50));
+    }
+    if(RT.streamingConvs.has(ST.convs.cur))return;
+  }
   if(!navigator.onLine&&!override){RT.offlineQ=msg;document.getElementById("offlineB").style.display="block";toast("Hors ligne");return;}
   // Capturé ici : si l'utilisateur bascule vers une autre conversation pendant
   // que celle-ci génère encore, tout le reste de la fonction continue à
@@ -2083,7 +2154,7 @@ async function sendMsg(override,retry=false){
       if(/^(génère|genere|dessine|crée une image|génère une image)\s+/i.test(msg)){await genImg(msg.replace(/^(génère|genere|dessine|crée une image|génère une image)\s+/i,"").trim());return;}
       if(/^(joue|génère une musique|compose|crée une musique)\s+/i.test(msg)){await playMusic(msg.replace(/^(joue|génère une musique|compose|crée une musique)\s+/i,"").trim());return;}
     }
-    const rep=await callAPI(msg,targetConv);
+    const rep=await callAPI(msg,targetConv,null,retry);
     if(!RT.stopReqConvs.has(targetConv))await streamResp(rep.reply,targetConv,rep.reasoning,rep.sources);
   }catch(e){
     console.error("[sendMsg]",e);
@@ -2215,7 +2286,7 @@ function playAudio(url,name){
       </button>
 
       <div class="aud-info">
-        <div class="aud-title">${name}</div>
+        <div class="aud-title">${escH(String(name))}</div>
 
         <div class="aud-time-row">
           <span id="audCurrent">0:00</span>
@@ -2425,7 +2496,8 @@ async function captureAndAnalyze(){
   const vid=document.getElementById("vpVideo");
   const cv=document.createElement("canvas");cv.width=vid.videoWidth;cv.height=vid.videoHeight;
   cv.getContext("2d").drawImage(vid,0,0);
-  const dataUrl=cv.toDataURL("image/jpeg",.85);
+  const raw=cv.toDataURL("image/jpeg",.9);
+  const full=await resizeDataUrl(raw,1280,.8),dataUrl=await resizeDataUrl(raw,480,.6);
   stopVision();
   const ca=document.getElementById("chat");const we=WELCOME_EL;if(we&&we.parentNode===ca)we.remove();
   const targetConv=ST.convs.cur;
@@ -2433,7 +2505,7 @@ async function captureAndAnalyze(){
   if(!ST.hist[targetConv])ST.hist[targetConv]=[];ST.hist[targetConv].push({role:"user",content:dataUrl,type:"img"});save();
   RT.streamingConvs.add(targetConv);
   try{
-    const rep=await callAPI("Analyse cette image en détail. Décris ce que tu vois, les couleurs, les éléments, le contexte. Réponds en français.",targetConv,ev.target.result);
+    const rep=await callAPI("Analyse cette image en détail. Décris ce que tu vois, les couleurs, les éléments, le contexte. Réponds en français.",targetConv,full);
     if(!RT.stopReqConvs.has(targetConv))await streamResp(rep.reply,targetConv,rep.reasoning,rep.sources);
   }finally{fin(targetConv);}
 }
@@ -2480,13 +2552,14 @@ document.getElementById("pmMusic").onclick=()=>{setInp("Génère une musique ");
 document.getElementById("imgInp").onchange=async e=>{
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();reader.onload=async ev=>{
+    const full=await resizeDataUrl(ev.target.result,1280,.8),thumb=await resizeDataUrl(ev.target.result,480,.6);
     const ca=document.getElementById("chat");const we=WELCOME_EL;if(we&&we.parentNode===ca)we.remove();
     const targetConv=ST.convs.cur;
-    const uw=document.createElement("div");uw.className="msg-u";const ub=document.createElement("div");ub.className="ubub";ub.innerHTML=`<img src="${ev.target.result}" style="max-width:170px;border-radius:9px;display:block;">`;uw.appendChild(ub);ca.appendChild(uw);ca.scrollTop=ca.scrollHeight;
-    if(!ST.hist[targetConv])ST.hist[targetConv]=[];ST.hist[targetConv].push({role:"user",content:ev.target.result,type:"img"});save();
+    const uw=document.createElement("div");uw.className="msg-u";const ub=document.createElement("div");ub.className="ubub";ub.innerHTML=`<img src="${thumb}" style="max-width:170px;border-radius:9px;display:block;">`;uw.appendChild(ub);ca.appendChild(uw);ca.scrollTop=ca.scrollHeight;
+    if(!ST.hist[targetConv])ST.hist[targetConv]=[];ST.hist[targetConv].push({role:"user",content:thumb,type:"img"});save();
     RT.streamingConvs.add(targetConv);
     try{
-      const rep=await callAPI("Analyse cette image en détail. Décris ce que tu vois, les couleurs, les éléments, le contexte. Réponds en français.",targetConv,ev.target.result);
+      const rep=await callAPI("Analyse cette image en détail. Décris ce que tu vois, les couleurs, les éléments, le contexte. Réponds en français.",targetConv,full);
       if(!RT.stopReqConvs.has(targetConv))await streamResp(rep.reply,targetConv,rep.reasoning,rep.sources);
     }finally{fin(targetConv);}
   };reader.readAsDataURL(file);e.target.value="";
@@ -2555,21 +2628,20 @@ function startApp(){
       const n=ST.user&&ST.user!=="vous"?ST.user:null;
       const greet=n?`Bonjour ${n}. Je suis Lumina, ton assistant IA multimodal.\n\nJe peux générer des images, tracer des graphiques, t'aider en maths, physique, philosophie et toutes tes matières du BAC, jouer ou composer de la musique, écrire du code, analyser tes documents et bien plus encore.\n\nPar quoi on commence ?`:`Bonjour. Je suis Lumina, votre assistant IA multimodal.\n\nImages, graphiques, études BAC, code, musique, vision — tout est accessible. Que souhaitez-vous faire ?`;
       const targetConv=ST.convs.cur;
-      RT.streamingConvs.add(targetConv);await streamResp(greet,targetConv);fin(targetConv);
+      RT.greetingConv=targetConv;RT.streamingConvs.add(targetConv);await streamResp(greet,targetConv);RT.greetingConv=null;fin(targetConv);
     },700);
   }
   updName();
 }
 
 // ── TERMS MODAL ──
-document.getElementById("closeTerms").onclick=()=>document.getElementById("termsModal").classList.remove("show");
-document.getElementById("closeReport").onclick=()=>document.getElementById("reportModal").classList.remove("show");
-document.getElementById("submitReport").onclick=()=>{
+(document.getElementById("closeTerms")||{}).onclick=()=>document.getElementById("termsModal").classList.remove("show");
+(document.getElementById("closeReport")||{}).onclick=()=>document.getElementById("reportModal").classList.remove("show");
+(document.getElementById("submitReport")||{}).onclick=()=>{
   const text=document.getElementById("reportText").value.trim();
   const convId=document.getElementById("reportConvId").value;
   if(!text){toast("Décrivez le problème");return;}
-  sendFeedback("bug_report",{text,conversation_id:convId});
-  toast("Signalement envoyé, merci !");
+  sendFeedback("bug_report",{text,conversation_id:convId}).then(ok=>toast(ok?"Signalement envoyé, merci !":"Échec de l'envoi, réessaie"));
   document.getElementById("reportText").value="";
   document.getElementById("reportModal").classList.remove("show");
 };
@@ -2585,74 +2657,21 @@ document.getElementById("submitReport").onclick=()=>{
 </script>
 
 
-<!-- Conditions d'utilisation -->
-<div class="modal" id="termsModal">
-  <div class="modal-box" style="max-width:480px;max-height:80dvh;overflow-y:auto;">
-    <div class="modal-t">Conditions d'utilisation</div>
-    <div style="font-size:.8rem;line-height:1.7;color:var(--txt2);white-space:normal;">
-      <p style="margin-bottom:12px;font-weight:600;color:var(--txt);">Lumina est fourni à des fins d'assistance, d'information, d'apprentissage et de productivité.</p>
-      <p style="margin-bottom:12px;">L'utilisateur reste seul responsable de l'usage qu'il fait du service.</p>
-      <p style="margin-bottom:12px;font-weight:600;color:var(--txt);">Il est interdit d'utiliser Lumina pour :</p>
-      <ul style="margin-bottom:12px;padding-left:20px;color:var(--txt2);">
-        <li>des activités illégales,</li>
-        <li>le harcèlement,</li>
-        <li>la fraude,</li>
-        <li>la diffusion de logiciels malveillants,</li>
-        <li>l'atteinte à la vie privée d'autrui.</li>
-      </ul>
-      <p style="margin-bottom:12px;">Les réponses générées par Lumina sont produites automatiquement par un système d'intelligence artificielle et peuvent contenir des erreurs. L'éditeur ne garantit pas l'exactitude absolue des informations fournies et ne peut être tenu responsable des dommages résultant de leur utilisation.</p>
-      <p style="margin-bottom:12px;">L'utilisation du service est réservée aux personnes âgées d'au moins 13 ans ou avec l'autorisation d'un parent ou tuteur légal.</p>
-      <p style="margin-bottom:12px;color:var(--txt3);font-size:.72rem;">Créé par Issa Amakendé Abdoulaye Koné</p>
-    </div>
-    <div class="modal-btns">
-      <button class="mbtn s" id="closeTerms">Fermer</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Signaler un problème -->
-<div class="modal" id="reportModal">
-  <div class="modal-box" style="max-width:420px;">
-    <div class="modal-t">Signaler un problème</div>
-    <textarea class="modal-inp" id="reportText" placeholder="Décrivez le problème rencontré..." rows="4" style="min-height:80px;resize:vertical;margin-bottom:8px;"></textarea>
-    <input class="modal-inp" id="reportConvId" type="hidden" value="">
-    <div class="modal-btns">
-      <button class="mbtn s" id="closeReport">Annuler</button>
-      <button class="mbtn p" id="submitReport">Envoyer</button>
-    </div>
-  </div>
-</div>
-
-<!-- Analytics endpoint hidden config -->
 <script>
-const ANALYTICS_URL = ""; // L'URL de votre backend analytics sera définie lors du déploiement
-function sendFeedback(type, details) {
-  const data = {
-    type: type,
-    conversation_id: ST.convs.cur,
-    message_id: details.msgId || null,
-    timestamp: new Date().toISOString(),
-    user_email: ST.email || null,
-    user_agent: navigator.userAgent,
-    details: details
-  };
-  // Envoi vers le backend analytics (à configurer avec votre URL)
-  if (ANALYTICS_URL) {
-    fetch(ANALYTICS_URL + "/feedback", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(data)
-    }).catch(e => console.log("[Analytics] Erreur envoi:", e));
-  }
-  // Stockage local en fallback
-  try {
-    const reports = JSON.parse(localStorage.getItem("L5_reports") || "[]");
-    reports.push(data);
-    if (reports.length > 100) reports.shift();
-    localStorage.setItem("L5_reports", JSON.stringify(reports));
-  } catch(e) {}
-  console.log("[Analytics] Feedback envoyé:", type, details);
+// Retour utilisateur : envoyé au serveur (table feedback) pour like / dislike / signalement.
+// copy et share ne quittent pas l'appareil.
+async function sendFeedback(type, details){
+  details=details||{};
+  if(!["like","dislike","bug_report"].includes(type)||!ST.token)return false;
+  try{
+    const r=await fetch(`${BASE}/feedback`,{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},
+      body:JSON.stringify({type,conv_id:details.conversation_id||ST.convs.cur,message_id:details.msgId||null,text:details.text||""})});
+    return r.ok;
+  }catch(e){return false;}
 }
 </script>
+<script src="/ui7.js"></script>
+<script src="/live.js"></script>
+<script src="/ui8.js"></script>
 </body>
 </html>
