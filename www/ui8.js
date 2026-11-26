@@ -345,8 +345,10 @@
         if (o && o.method === "POST" && typeof u === "string" && /\/chat(\?|$)/.test(u) && typeof o.body === "string") {
           isChat = true;
           const b = JSON.parse(o.body), ci = instrFor(b.conv_id || ST.convs.cur);
-          if (window.__imgsPending) { b.images = window.__imgsPending; window.__imgsPending = null; o = Object.assign({}, o, { body: JSON.stringify(b) }); }
-          if (ci) { b.custom_instructions = ci; o = Object.assign({}, o, { body: JSON.stringify(b) }); }
+          if (window.__imgsPending) { b.images = window.__imgsPending; window.__imgsPending = null; }
+          if (ci) b.custom_instructions = ci;
+          b.client_offset_min = -new Date().getTimezoneOffset();   // l'heure locale de l'utilisateur, pour que Lumina connaisse la date réelle
+          o = Object.assign({}, o, { body: JSON.stringify(b) });
         }
       } catch (e) { /* on n'empêche jamais l'envoi */ }
       const p = f.call(this, u, o);
@@ -604,7 +606,7 @@
             { toggle: () => CFG.web, flip: () => { CFG.web = !CFG.web; saveCfg("web", CFG.web); applyCfg(); } }),
           row(ICO('<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>'), "Lecture automatique", null,
             { toggle: () => CFG.autoTTS, flip: () => { CFG.autoTTS = !CFG.autoTTS; saveCfg("tts", CFG.autoTTS); applyCfg(); } }),
-          row(ICO('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>'), "Outils Lumina", "Graphique, image, musique, vision, gestes", { onclick: () => { close(); setTimeout(toolsOpen, 80); } })),
+          row(ICO('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>'), "Outils Lumina", "Graphique, image, musique, vision, gestes", { onclick: go(() => L8tools()) })),
       grp(row(ICO('<circle cx="12" cy="12" r="10"/><polygon points="16.2 7.8 14.1 14.1 7.8 16.2 9.9 9.9 16.2 7.8"/>'), "Explorer", null, { onclick: go(() => $("navExplore").click()) }),
           row(ICO('<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>'), "Personnaliser", null, { onclick: go(() => $("navCustom").click()) }),
           row(ICO('<path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M21 12h-5a2 2 0 0 0 0 4h5z"/>'), "Abonnement", planTxt.replace("Lumina · ", ""), { onclick: go(() => $("navPlans").click()) }),
@@ -795,5 +797,56 @@
     const hint = $("authHint"); if (!hint || !hint.parentNode) return;
     const a = el("div", "auth-hint"); const l = el("a", "", "Mot de passe oublié ?"); l.style.cursor = "pointer"; l.onclick = openForgot; a.appendChild(l);
     hint.parentNode.insertBefore(a, hint.nextSibling);
+  });
+})();
+
+
+/* ── Outils Lumina (médias, vision, graphique, image…) · repli des logos ── */
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const guard = (n, fn) => { try { fn(); } catch (e) { console.error("[ui8:" + n + "]", e); } };
+  const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+
+  /* Les outils reprennent exactement les éléments de l'ancien menu (mêmes icônes SVG, mêmes actions).
+     La génération de musique n'y figure pas tant qu'elle n'a pas de fournisseur fiable. */
+  window.L8tools = function () {
+    L8sheet("Outils Lumina", (body, close) => {
+      const menu = $("plusMenu"); if (!menu) { body.textContent = "Outils indisponibles."; return; }
+      const run = (node) => () => { close(); setTimeout(() => node.click(), 80); };
+      const grid = el("div", "tools-grid");
+      menu.querySelectorAll(".pm-item").forEach((it) => {
+        if (it.id === "pmMusic") return;
+        const t = el("button", "tool-tile"); t.type = "button";
+        const ic = el("span", "tool-ic"); const src = it.querySelector(".pm-ico");
+        if (src) { ic.innerHTML = src.innerHTML; ic.style.background = src.style.background; }
+        t.append(ic, (it.querySelector(".pm-lbl") || {}).textContent || ""); t.onclick = run(it); grid.appendChild(t);
+      });
+      body.appendChild(grid);
+      const skip = new Set(["pmToggleWeb", "pmToggleTTS", "pmOpenStg"]);   // déjà dans « Ajouter au chat »
+      menu.querySelectorAll(".pm-trow").forEach((r) => {
+        if (skip.has(r.id)) return;
+        const row = el("div", "add-row"); row.style.cssText = "margin-top:10px;background:var(--surface);border-radius:16px";
+        const ic = el("span", "add-row-ic"); const src = r.querySelector(".pm-tico"); if (src) ic.innerHTML = src.innerHTML;
+        const tx = el("div", "add-row-tx"); tx.append(el("div", "add-row-t", (r.querySelector(".pm-tlbl") || {}).textContent || ""));
+        row.append(ic, tx); row.onclick = run(r); body.appendChild(row);
+      });
+    });
+  };
+
+  /* Un logo qui ne se charge pas ne doit jamais s'afficher comme une image cassée : on le remplace par le SVG de Lumina */
+  guard("logo-fallback", () => {
+    const swap = (img) => {
+      if (!img || img.dataset.l8 || !/\/icons\//.test(img.getAttribute("src") || "")) return;
+      img.dataset.l8 = "1";
+      const r = img.getBoundingClientRect(), w = Math.round(r.width) || 28, h = Math.round(r.height) || 28;
+      const holder = document.createElement("span");
+      holder.className = img.className; holder.style.cssText = img.style.cssText + ";display:inline-flex;align-items:center;justify-content:center;width:" + w + "px;height:" + h + "px;color:var(--accent)";
+      holder.innerHTML = '<svg viewBox="0 0 40 24" fill="none" width="' + Math.round(w * 0.8) + '" height="' + Math.round(h * 0.5) + '"><use href="#luminaBrain" stroke="currentColor" stroke-width="1.8"/></svg>';
+      img.replaceWith(holder);
+    };
+    document.addEventListener("error", (e) => { if (e.target && e.target.tagName === "IMG") swap(e.target); }, true);
+    const sweep = () => document.querySelectorAll("img").forEach((i) => { if (i.complete && i.naturalWidth === 0) swap(i); });
+    window.addEventListener("load", () => { sweep(); setTimeout(sweep, 1500); });
   });
 })();

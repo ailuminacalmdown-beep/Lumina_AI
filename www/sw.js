@@ -2,7 +2,7 @@
    - Met en cache l'enveloppe de l'appli (HTML/CSS/JS/icônes) pour un démarrage hors ligne.
    - Réseau d'abord : une nouvelle version déployée est toujours prise en compte dès qu'on est en ligne.
    - Ne met JAMAIS en cache l'API (auth, chat, live, feedback, mémoire) ni les requêtes non-GET. */
-const VERSION = "lumina-v8-8";
+const VERSION = "lumina-v8-9";
 const SHELL = ["/", "/index.html", "/v7.css", "/v8.css", "/ui8.js", "/ui7.js", "/live.js", "/manifest.json",
   "/icons/icon-32.png", "/icons/icon-192.png", "/icons/icon-512.png"];
 const API_PREFIXES = ["/auth", "/chat", "/live", "/feedback", "/get_memory", "/clear_memory",

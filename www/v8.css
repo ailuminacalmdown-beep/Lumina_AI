@@ -164,3 +164,19 @@ html body .atext code,html body .atext pre,html body .atext pre code{font-family
 .legal8 .maj,.legal8 .note{color:var(--text-tertiary)}
 .auth-legal{text-align:center;font-size:12px;color:var(--text-tertiary);line-height:1.6;margin-top:6px}.auth-legal a{color:var(--accent)}
 #pmMusic{display:none}
+
+/* ── Menu latéral : tout défile ensemble (liens + discussions), sans séparation fixe ── */
+.sidebar{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+.sidebar .conv-list{flex:none;min-height:0;overflow:visible}
+.sb-nav{border-bottom:0}
+.sidebar .sb-foot{position:sticky;bottom:0;margin-top:auto;background:var(--bg-elevated);z-index:2}
+
+/* ── Bandeau « Hors ligne » au-dessus de la barre de saisie, jamais dessus ── */
+.offline-b{bottom:calc(var(--cmp-h,84px) + 18px + var(--sab,0px))}
+
+/* ── Outils Lumina ── */
+.tools-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:4px 4px 0}
+.tool-tile{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 4px 10px;border:1px solid var(--border);border-radius:16px;background:var(--surface);color:var(--text-secondary);font-family:var(--font-sans);font-size:12px;font-weight:600;cursor:pointer;text-align:center}
+.tool-tile:active{background:var(--surface-hover)}
+.tool-ic{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.tool-ic svg{width:20px;height:20px}

@@ -1,5 +1,8 @@
 {
   "appId": "com.lumina.ai",
   "appName": "Lumina",
-  "webDir": "www"
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
 }

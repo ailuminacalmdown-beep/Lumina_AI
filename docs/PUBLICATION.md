@@ -23,6 +23,9 @@ Rédigé à partir de ce qui a été vérifié dans le code. **Rien de ce qui su
 8. **Google Play** (si tu publies là) : formulaire de sécurité des données, URL publique de la politique (`https://TON-DOMAINE/privacy`), et vérification des règles sur la suppression de compte (un lien web peut être exigé en plus du bouton dans l'appli) et sur la facturation des services numériques. Je n'ai pas vérifié ces règles à jour.
 9. **Partie 9** : voix, micro, lecteur de musique récente (la génération de musique reste désactivée).
 
+## Agent et actualités (v10)
+Voir `docs/ENGINE.md`. À vérifier lors de tes essais : qu'une demande récente déclenche bien une recherche (le bandeau « Lu N pages » apparaît), qu'aucune balise `<function_calls>` ne s'affiche, que Lumina donne la bonne date. Si l'agent échoue, l'ancien mode prend le relais sans message d'erreur.
+
 ## Limites connues
 - Mode Live, génération d'images et musique ne sont pas soumis aux quotas.
 - La durée « Réflexion pendant N secondes » n'est disponible qu'à l'affichage de la réponse ; elle n'est pas conservée dans l'historique.

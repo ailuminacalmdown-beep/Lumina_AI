@@ -1,0 +1,3 @@
+# Spécifique à Termux : à copier dans ~/.gradle/gradle.properties (PAS dans le dépôt).
+# Sur GitHub Actions / un PC, ne mettez rien : Gradle télécharge son propre aapt2.
+android.aapt2FromMavenOverride=/data/data/com.termux/files/usr/bin/aapt2
